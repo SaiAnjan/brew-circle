@@ -75,7 +75,9 @@ export interface MarketplaceListing {
   sellerReviews: number;
   location: string;
   dnaSummary: string;
-  image?: string;
+  imageUrl?: string;
+  gearCategory?: string;
+  description?: string;
 }
 
 export interface CoffeeSession {

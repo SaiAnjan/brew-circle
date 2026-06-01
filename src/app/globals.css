@@ -1,50 +1,40 @@
 @import "tailwindcss";
 
+/* Aligned with my-portfolio: light, minimal, text-focused */
 :root {
-  --espresso: #120e0b;
-  --roast: #1f1814;
-  --cream: #f5efe6;
-  --amber: #d4a574;
-  --amber-light: #e8c9a0;
-  --background: var(--espresso);
-  --foreground: var(--cream);
+  --background: #f2f2f2;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --primary: #171717;
+  --muted: #737373;
+  --border: #e5e5e5;
+  --accent: #8b6914;
 }
 
 @theme inline {
-  --color-espresso: var(--espresso);
-  --color-roast: var(--roast);
-  --color-cream: var(--cream);
-  --color-amber: var(--amber);
-  --color-amber-light: var(--amber-light);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-source);
-  --font-display: var(--font-playfair);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
 }
 
 body {
-  background: var(--espresso);
-  color: var(--cream);
-  font-family: var(--font-source), system-ui, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-.font-display {
-  font-family: var(--font-playfair), Georgia, serif;
+.card-surface {
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  background: color-mix(in srgb, var(--card) 85%, var(--background));
+  transition: background-color 0.15s ease;
 }
 
-.card-hover {
-  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
-}
-
-.card-hover:hover {
-  border-color: color-mix(in srgb, var(--amber) 40%, transparent);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
-}
-
-.gradient-hero {
-  background:
-    radial-gradient(ellipse 80% 60% at 50% -20%, color-mix(in srgb, var(--amber) 25%, transparent), transparent),
-    radial-gradient(ellipse 50% 40% at 100% 0%, color-mix(in srgb, #722f37 20%, transparent), transparent),
-    var(--espresso);
+.card-surface:hover {
+  background: var(--card);
 }

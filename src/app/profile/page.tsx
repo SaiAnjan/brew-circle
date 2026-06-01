@@ -2,11 +2,12 @@ import Link from "next/link";
 import { DNAProfile } from "@/components/DNAProfile";
 import { FlavorWheel } from "@/components/FlavorWheel";
 import { JourneyTimeline } from "@/components/JourneyTimeline";
-import { beans, currentUser, flavorSuggestions } from "@/lib/data";
+import { beans, flavorSuggestions } from "@/lib/data";
+import { getCurrentUserProfile } from "@/lib/profile";
 import { MapPin, Star } from "lucide-react";
 
-export default function ProfilePage() {
-  const user = currentUser;
+export default async function ProfilePage() {
+  const user = await getCurrentUserProfile();
   const userBeans = beans.filter((b) => user.dna.favoriteBeans.some((f) => b.name.includes(f.split(" ")[0]) || b.name === f));
 
   return (

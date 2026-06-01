@@ -13,11 +13,11 @@ export function SectionHeader({
   return (
     <div className="mb-4 flex items-end justify-between gap-4">
       <div>
-        <h2 className="font-display text-xl text-cream">{title}</h2>
-        {subtitle && <p className="mt-0.5 text-sm text-cream/60">{subtitle}</p>}
+        <h2 className="text-base font-semibold tracking-tight text-primary">{title}</h2>
+        {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
       </div>
       {href && (
-        <Link href={href} className="flex shrink-0 items-center gap-1 text-sm text-amber hover:text-amber-light">
+        <Link href={href} className="flex shrink-0 items-center gap-1 text-sm text-primary hover:underline">
           See all <ArrowRight className="h-4 w-4" />
         </Link>
       )}
