@@ -1,10 +1,8 @@
 import type {
   Bean,
   Brewer,
-  CoffeeDNA,
   CoffeeSession,
   FlavorNote,
-  JourneyMilestone,
   MarketplaceListing,
   QAQuestion,
   UserProfile,
@@ -52,34 +50,34 @@ export const currentUser: UserProfile = {
     {
       id: "j2",
       date: "Jun 2024",
-      title: "V60 breakthrough",
-      description: "Hit 1:16 ratio with TDS sweet spot on Chikmagalur washed.",
+      title: "Dialled in V60",
+      description: "Consistent 1:16 pours with Comandante at 22 clicks.",
       icon: "pour",
     },
     {
       id: "j3",
-      date: "Sep 2024",
-      title: "Joined BrewCircle",
-      description: "Connected with 40+ brewers in Bangalore.",
-      icon: "community",
+      date: "Nov 2024",
+      title: "Espresso at home",
+      description: "Flair 58 + pressure profiling for honey naturals.",
+      icon: "espresso",
     },
     {
       id: "j4",
-      date: "Jan 2025",
+      date: "Feb 2025",
       title: "Hosted cupping",
-      description: "Led 8-person Araku natural tasting at home.",
-      icon: "session",
+      description: "6-person Araku vertical at Third Wave Roasters.",
+      icon: "cup",
     },
     {
       id: "j5",
       date: "May 2025",
-      title: "Marketplace seller",
-      description: "Sold Comandante to a fellow brewer — 5★ rating.",
-      icon: "market",
+      title: "50 beans logged",
+      description: "Half-century of Indian specialty on BrewCircle.",
+      icon: "trophy",
     },
   ],
-  qaStats: { questions: 12, answers: 47, accepted: 18 },
-  marketplaceRep: { rating: 4.9, sales: 6, reviews: 14 },
+  qaStats: { questions: 12, answers: 47, accepted: 31 },
+  marketplaceRep: { rating: 4.9, sales: 8, reviews: 14 },
 };
 
 export const compareUser: UserProfile = {
@@ -87,31 +85,31 @@ export const compareUser: UserProfile = {
   name: "Rohan Mehta",
   handle: "rohan_espresso",
   avatar: "RM",
-  bio: "Espresso nerd. Mumbai. Always dialing in.",
+  bio: "Mumbai-based espresso nerd. Medium-dark and moka pot enthusiast.",
   location: "Mumbai, Maharashtra",
-  brewCount: 518,
+  brewCount: 891,
   followerCount: 2103,
   dna: {
-    methods: ["Espresso", "Moka Pot", "Aeropress"],
-    equipment: ["Breville Bambino", "1Zpresso JX-Pro", "Aeropress"],
-    favoriteBeans: ["Kerehaklu Honey", "Monsooned Malabar"],
-    favoriteRoasters: ["Subko", "Third Wave Coffee", "Blue Tokai"],
+    methods: ["Espresso", "Moka Pot", "French Press"],
+    equipment: ["Breville Bambino", "1Zpresso JX-Pro", "Moka Pot"],
+    favoriteBeans: ["Monsooned Malabar AA", "Kerehaklu Honey"],
+    favoriteRoasters: ["Blue Tokai", "Third Wave Coffee"],
     roastPrefs: ["Medium", "Medium-Dark"],
-    processPrefs: ["Honey", "Monsooned", "Washed"],
-    flavorPrefs: ["Chocolate", "Nutty", "Caramel", "Spicy"],
-    regions: ["Coorg", "Chikmagalur", "Sakleshpur"],
-    estates: ["Kerehaklu Estate", "Salawara Estate"],
+    processPrefs: ["Washed", "Honey", "Monsooned"],
+    flavorPrefs: ["Chocolate", "Nutty", "Spicy", "Caramel"],
+    regions: ["Malabar Coast", "Coorg", "Chikmagalur"],
+    estates: ["Kelagur Estate", "Kerehaklu Estate"],
   },
   flavorCoverage: {
-    Chocolate: 94,
-    Nutty: 89,
+    Chocolate: 91,
+    Nutty: 85,
     Caramel: 78,
-    Floral: 42,
-    Berry: 35,
-    Citrus: 48,
+    Floral: 32,
+    Berry: 28,
+    Citrus: 41,
     Tropical: 22,
-    Winey: 55,
-    Spicy: 71,
+    Winey: 35,
+    Spicy: 62,
   },
   journey: [],
   qaStats: { questions: 8, answers: 62, accepted: 24 },
@@ -313,74 +311,67 @@ export const qaQuestions: QAQuestion[] = [
     author: "newbie_brew",
     avatar: "NB",
     tags: ["V60", "Grind", "Chikmagalur"],
-    upvotes: 47,
+    upvotes: 42,
     acceptedAnswerId: "a1",
     answers: [
       {
         id: "a1",
-        body: "Try 24–26 clicks on Comandante for washed medium. Drop temp to 92°C if still bitter. 1:16, 2:45 total brew.",
+        body: "Try 24 clicks for washed Chikmagalur. 45s bloom, gentle spiral pour. Ratnagiri loves clarity.",
         author: "ananya_pourover",
         avatar: "AR",
-        upvotes: 89,
+        upvotes: 38,
       },
       {
         id: "a2",
-        body: "Also check your pour rate — slow center pours help with SLN9 clarity.",
-        author: "priya_v60",
-        avatar: "PN",
-        upvotes: 34,
+        body: "Also check water — Bangalore tap can skew acidic. Third Wave recipe helps.",
+        author: "vikram_dialin",
+        avatar: "VS",
+        upvotes: 12,
       },
     ],
   },
   {
     id: "q2",
-    title: "Aeropress recipe for Araku natural?",
-    body: "Want to highlight berry notes without over-extraction. Inverted or standard?",
-    author: "berry_hunter",
-    avatar: "BH",
-    tags: ["Aeropress", "Natural", "Araku"],
-    upvotes: 62,
+    title: "Aeropress inverted vs standard for Indian naturals?",
+    body: "Salawara natural tastes flat standard. Worth inverting?",
+    author: "meera_coldbrew",
+    avatar: "MK",
+    tags: ["Aeropress", "Natural", "Sakleshpur"],
+    upvotes: 28,
     answers: [
       {
         id: "a3",
-        body: "Inverted, 14g fine-medium, 80°C, 1:45 steep, gentle press. Araku naturals love lower temp.",
-        author: "meera_coldbrew",
-        avatar: "MK",
-        upvotes: 71,
+        body: "Inverted gives more body. 18g, 1:12, 2min steep. Tropical notes pop on naturals.",
+        author: "priya_v60",
+        avatar: "PN",
+        upvotes: 19,
       },
     ],
   },
   {
     id: "q3",
-    title: "Flair 58 pressure profiling for Kerehaklu honey?",
-    body: "18g in, getting sour shots at 9 bar constant. Should I pre-infuse longer?",
-    author: "rohan_espresso",
-    avatar: "RM",
-    tags: ["Espresso", "Honey", "Flair"],
-    upvotes: 38,
+    title: "Flair 58 pressure profiling for honey processed?",
+    body: "Kerehaklu Honey — channeling at 9 bar flat. Any profiles?",
+    author: "arjun_aeropress",
+    avatar: "AP",
+    tags: ["Espresso", "Honey", "Flair 58"],
+    upvotes: 35,
     acceptedAnswerId: "a4",
     answers: [
       {
         id: "a4",
-        body: "8 bar with 8s pre-infuse, then ramp to 9. Honey processed needs slightly longer ratio — aim 1:2.2.",
-        author: "vikram_dialin",
-        avatar: "VS",
-        upvotes: 52,
+        body: "Ramp 3→6→9 bar over 30s. 5s preinfusion at 3 bar. Caramel without bitterness.",
+        author: "ananya_pourover",
+        avatar: "AR",
+        upvotes: 41,
       },
     ],
   },
 ];
 
 export const flavorSuggestions: { flavor: FlavorNote; bean: string; reason: string }[] = [
-  { flavor: "Tropical", bean: "Kelagur Estate", reason: "Only 34% explored — citrus-forward Coorg washed" },
-  { flavor: "Spicy", bean: "Kerehaklu Honey", reason: "Complements your winey naturals at 28% coverage" },
-];
-
-export const onboardingSteps = [
-  { id: "methods", title: "How do you brew?", subtitle: "Select all that apply" },
-  { id: "equipment", title: "Your setup", subtitle: "Gear on your counter" },
-  { id: "flavors", title: "Flavor DNA", subtitle: "What notes make you smile?" },
-  { id: "regions", title: "Indian origins", subtitle: "Regions & estates you love" },
+  { flavor: "Tropical", bean: "Salawara Natural", reason: "Your coverage is low — this natural unlocks tropical notes." },
+  { flavor: "Spicy", bean: "Monsooned Malabar AA", reason: "Expand your wheel with Malabar spice and body." },
 ];
 
 export function computeCompatibility(a: UserProfile, b: UserProfile): {
@@ -388,37 +379,38 @@ export function computeCompatibility(a: UserProfile, b: UserProfile): {
   shared: string[];
   differences: string[];
 } {
+  const shared: string[] = [];
+  const differences: string[] = [];
+
   const sharedMethods = a.dna.methods.filter((m) => b.dna.methods.includes(m));
+  if (sharedMethods.length) shared.push(`Methods: ${sharedMethods.join(", ")}`);
+
   const sharedRoasters = a.dna.favoriteRoasters.filter((r) => b.dna.favoriteRoasters.includes(r));
-  const sharedRegions = a.dna.regions.filter((r) => b.dna.regions.includes(r));
+  if (sharedRoasters.length) shared.push(`Roasters: ${sharedRoasters.join(", ")}`);
+
   const sharedFlavors = a.dna.flavorPrefs.filter((f) => b.dna.flavorPrefs.includes(f));
+  if (sharedFlavors.length) shared.push(`Flavors: ${sharedFlavors.join(", ")}`);
 
-  const score =
-    sharedMethods.length * 12 +
-    sharedRoasters.length * 15 +
-    sharedRegions.length * 10 +
-    sharedFlavors.length * 8 +
-    (a.dna.processPrefs.some((p) => b.dna.processPrefs.includes(p)) ? 10 : 0);
+  const sharedRegions = a.dna.regions.filter((r) => b.dna.regions.includes(r));
+  if (sharedRegions.length) shared.push(`Regions: ${sharedRegions.join(", ")}`);
 
-  const matchPercent = Math.min(98, Math.max(42, score + 18));
+  const onlyA = a.dna.flavorPrefs.filter((f) => !b.dna.flavorPrefs.includes(f));
+  const onlyB = b.dna.flavorPrefs.filter((f) => !a.dna.flavorPrefs.includes(f));
+  if (onlyA.length) differences.push(`${a.name} prefers: ${onlyA.join(", ")}`);
+  if (onlyB.length) differences.push(`${b.name} prefers: ${onlyB.join(", ")}`);
 
-  const shared = [
-    ...sharedMethods.map((m) => `Both brew ${m}`),
-    ...sharedRoasters.map((r) => `Love ${r}`),
-    ...sharedRegions.map((r) => `Explore ${r}`),
-    ...sharedFlavors.map((f) => `Prefer ${f} notes`),
-  ];
-
-  const diffMethods = b.dna.methods.filter((m) => !a.dna.methods.includes(m));
-  const diffFlavors = b.dna.flavorPrefs.filter((f) => !a.dna.flavorPrefs.includes(f));
-
-  const differences = [
-    ...diffMethods.map((m) => `Rohan favors ${m}`),
-    ...diffFlavors.slice(0, 2).map((f) => `Different taste: ${f}`),
-    a.dna.roastPrefs[0] !== b.dna.roastPrefs[0]
-      ? `Roast prefs: ${a.dna.roastPrefs[0]} vs ${b.dna.roastPrefs[0]}`
-      : "",
-  ].filter(Boolean);
+  const methodScore = (sharedMethods.length / Math.max(a.dna.methods.length, 1)) * 25;
+  const roasterScore = (sharedRoasters.length / Math.max(a.dna.favoriteRoasters.length, 1)) * 25;
+  const flavorScore = (sharedFlavors.length / Math.max(a.dna.flavorPrefs.length, 1)) * 30;
+  const regionScore = (sharedRegions.length / Math.max(a.dna.regions.length, 1)) * 20;
+  const matchPercent = Math.min(97, Math.max(38, Math.round(methodScore + roasterScore + flavorScore + regionScore + 15)));
 
   return { matchPercent, shared, differences };
 }
+
+export const onboardingSteps = [
+  { id: "methods", title: "How do you brew?", subtitle: "Select your go-to brew methods" },
+  { id: "equipment", title: "Your setup", subtitle: "What gear do you use at home?" },
+  { id: "flavors", title: "Flavor preferences", subtitle: "Which notes do you chase?" },
+  { id: "regions", title: "Origin regions", subtitle: "Where do your favorite beans come from?" },
+];
