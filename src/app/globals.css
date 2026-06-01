@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --espresso: #120e0b;
+  --roast: #1f1814;
+  --cream: #f5efe6;
+  --amber: #d4a574;
+  --amber-light: #e8c9a0;
+  --background: var(--espresso);
+  --foreground: var(--cream);
+}
+
+@theme inline {
+  --color-espresso: var(--espresso);
+  --color-roast: var(--roast);
+  --color-cream: var(--cream);
+  --color-amber: var(--amber);
+  --color-amber-light: var(--amber-light);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-source);
+  --font-display: var(--font-playfair);
+}
+
+body {
+  background: var(--espresso);
+  color: var(--cream);
+  font-family: var(--font-source), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-playfair), Georgia, serif;
+}
+
+.card-hover {
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.card-hover:hover {
+  border-color: color-mix(in srgb, var(--amber) 40%, transparent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+.gradient-hero {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -20%, color-mix(in srgb, var(--amber) 25%, transparent), transparent),
+    radial-gradient(ellipse 50% 40% at 100% 0%, color-mix(in srgb, #722f37 20%, transparent), transparent),
+    var(--espresso);
+}
