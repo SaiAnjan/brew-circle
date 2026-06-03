@@ -4,6 +4,7 @@
 -- Profiles (1:1 with auth.users)
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
+  email text unique,
   phone text unique,
   name text,
   handle text unique,
@@ -56,6 +57,9 @@ create table if not exists public.marketplace_listings (
 create index if not exists marketplace_listings_status_idx on public.marketplace_listings (status);
 create index if not exists marketplace_listings_seller_idx on public.marketplace_listings (seller_id);
 
+alter table public.profiles add column if not exists email text;
+create unique index if not exists profiles_email_key on public.profiles (email) where email is not null;
+
 -- Auto-create profile on signup
 create or replace function public.handle_new_user()
 returns trigger
@@ -63,9 +67,10 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (id, phone, name, handle, avatar_initials)
+  insert into public.profiles (id, email, phone, name, handle, avatar_initials)
   values (
     new.id,
+    new.email,
     new.phone,
     coalesce(new.raw_user_meta_data->>'name', 'Brewer'),
     coalesce(new.raw_user_meta_data->>'handle', 'brewer_' || substr(new.id::text, 1, 8)),

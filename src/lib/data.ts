@@ -409,6 +409,7 @@ export function computeCompatibility(a: UserProfile, b: UserProfile): {
 }
 
 export const onboardingSteps = [
+  { id: "details", title: "Set up your profile", subtitle: "Add your name, handle, phone number, and location" },
   { id: "methods", title: "How do you brew?", subtitle: "Select your go-to brew methods" },
   { id: "equipment", title: "Your setup", subtitle: "What gear do you use at home?" },
   { id: "flavors", title: "Flavor preferences", subtitle: "Which notes do you chase?" },

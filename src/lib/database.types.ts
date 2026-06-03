@@ -1,5 +1,6 @@
 export type DbProfile = {
   id: string;
+  email: string | null;
   phone: string | null;
   name: string | null;
   handle: string | null;
