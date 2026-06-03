@@ -9,7 +9,32 @@ import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const METHODS: BrewMethod[] = ["Espresso", "V60", "Aeropress", "French Press", "Moka Pot", "Cold Brew"];
-const EQUIPMENT = ["Comandante C40", "Fellow Stagg EKG", "Hario V60", "Flair 58", "Aeropress", "Breville Bambino"];
+const EQUIPMENT = [
+  "Hario V60",
+  "Kalita Wave",
+  "Origami Dripper",
+  "Chemex",
+  "Aeropress",
+  "French Press",
+  "Moka Pot",
+  "South Indian Filter",
+  "Clever Dripper",
+  "Cold Brew Maker",
+  "Comandante C40",
+  "Timemore C2/C3",
+  "1Zpresso JX-Pro",
+  "Baratza Encore",
+  "Fellow Ode",
+  "Fellow Opus",
+  "Fellow Stagg EKG",
+  "Hario Buono Kettle",
+  "Coffee Scale",
+  "Flair 58",
+  "Wacaco Picopresso",
+  "Breville Bambino",
+  "Gaggia Classic Pro",
+  "Milk Frother",
+];
 const FLAVORS: FlavorNote[] = ["Chocolate", "Nutty", "Caramel", "Floral", "Berry", "Citrus", "Tropical", "Winey", "Spicy"];
 const REGIONS = ["Chikmagalur", "Coorg", "Araku Valley", "Sakleshpur", "Nilgiris", "Bababudangiri"];
 
