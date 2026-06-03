@@ -16,16 +16,26 @@ const FLAVORS: FlavorNote[] = [
 ];
 
 const FLAVOR_COLORS: Record<FlavorNote, string> = {
-  Chocolate: "bg-[#5c3d2e]",
-  Nutty: "bg-[#6b5344]",
-  Caramel: "bg-[#a67c52]",
-  Floral: "bg-[#9b7eb8]",
-  Berry: "bg-[#8b3a62]",
-  Citrus: "bg-[#d4a017]",
-  Tropical: "bg-[#2d8a6e]",
-  Winey: "bg-[#722f37]",
-  Spicy: "bg-[#c45c26]",
+  Chocolate: "#5c3d2e",
+  Nutty: "#6b5344",
+  Caramel: "#a67c52",
+  Floral: "#9b7eb8",
+  Berry: "#8b3a62",
+  Citrus: "#d4a017",
+  Tropical: "#2d8a6e",
+  Winey: "#722f37",
+  Spicy: "#c45c26",
 };
+
+function getCoverageValue(coverage: Record<FlavorNote, number>, flavor: FlavorNote) {
+  const value = coverage[flavor];
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(100, Math.max(0, value));
+}
+
+function formatPoint(value: number) {
+  return Number(value.toFixed(3));
+}
 
 export function FlavorWheel({
   coverage,
@@ -34,8 +44,15 @@ export function FlavorWheel({
   coverage: Record<FlavorNote, number>;
   suggestions?: { flavor: FlavorNote; bean: string; reason: string }[];
 }) {
+  const safeCoverage = FLAVORS.reduce(
+    (acc, flavor) => ({
+      ...acc,
+      [flavor]: getCoverageValue(coverage, flavor),
+    }),
+    {} as Record<FlavorNote, number>,
+  );
   const avg = Math.round(
-    FLAVORS.reduce((sum, f) => sum + coverage[f], 0) / FLAVORS.length,
+    FLAVORS.reduce((sum, flavor) => sum + safeCoverage[flavor], 0) / FLAVORS.length,
   );
 
   return (
@@ -44,7 +61,8 @@ export function FlavorWheel({
         <div className="relative h-48 w-48 shrink-0">
           <svg viewBox="0 0 200 200" className="h-full w-full -rotate-90">
             {FLAVORS.map((flavor, i) => {
-              const pct = coverage[flavor] / 100;
+              const coverageValue = safeCoverage[flavor];
+              const pct = coverageValue / 100;
               const angle = (360 / FLAVORS.length) * i;
               const nextAngle = (360 / FLAVORS.length) * (i + 1);
               const r = 70;
@@ -62,13 +80,13 @@ export function FlavorWheel({
               const ix2 = cx + innerR * Math.cos(end);
               const iy2 = cy + innerR * Math.sin(end);
               const large = nextAngle - angle > 180 ? 1 : 0;
-              const d = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${innerR} ${innerR} 0 ${large} 0 ${ix1} ${iy1} Z`;
+              const d = `M ${formatPoint(x1)} ${formatPoint(y1)} A ${r} ${r} 0 ${large} 1 ${formatPoint(x2)} ${formatPoint(y2)} L ${formatPoint(ix2)} ${formatPoint(iy2)} A ${formatPoint(innerR)} ${formatPoint(innerR)} 0 ${large} 0 ${formatPoint(ix1)} ${formatPoint(iy1)} Z`;
               return (
                 <path
                   key={flavor}
                   d={d}
-                  className={cn(FLAVOR_COLORS[flavor], "opacity-90")}
-                  opacity={0.4 + pct * 0.6}
+                  fill={FLAVOR_COLORS[flavor]}
+                  opacity={Number((0.4 + pct * 0.6).toFixed(3))}
                 />
               );
             })}
@@ -82,16 +100,16 @@ export function FlavorWheel({
           {FLAVORS.map((flavor) => (
             <div key={flavor} className="rounded-xl border border-cream/10 bg-espresso/50 p-2.5">
               <div className="flex items-center gap-2">
-                <span className={cn("h-2.5 w-2.5 rounded-full", FLAVOR_COLORS[flavor])} />
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: FLAVOR_COLORS[flavor] }} />
                 <span className="text-xs font-medium text-cream">{flavor}</span>
               </div>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-cream/10">
                 <div
-                  className={cn("h-full rounded-full", FLAVOR_COLORS[flavor])}
-                  style={{ width: `${coverage[flavor]}%` }}
+                  className={cn("h-full rounded-full")}
+                  style={{ width: `${safeCoverage[flavor]}%`, backgroundColor: FLAVOR_COLORS[flavor] }}
                 />
               </div>
-              <span className="mt-1 text-xs text-cream/50">{coverage[flavor]}%</span>
+              <span className="mt-1 text-xs text-cream/50">{safeCoverage[flavor]}%</span>
             </div>
           ))}
         </div>
