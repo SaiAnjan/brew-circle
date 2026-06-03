@@ -126,14 +126,14 @@ export default function OnboardingPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
       <div className="mb-8">
-        <p className="text-sm text-amber">
+        <p className="text-sm text-accent">
           Step {step + 1} of {onboardingSteps.length}
         </p>
-        <h1 className="mt-1 font-display text-3xl text-cream">{current.title}</h1>
-        <p className="text-cream/60">{current.subtitle}</p>
+        <h1 className="mt-1 font-display text-3xl text-foreground">{current.title}</h1>
+        <p className="text-muted">{current.subtitle}</p>
         <div className="mt-4 flex gap-1">
           {onboardingSteps.map((_, i) => (
-            <div key={i} className={cn("h-1 flex-1 rounded-full", i <= step ? "bg-amber" : "bg-cream/10")} />
+            <div key={i} className={cn("h-1 flex-1 rounded-full", i <= step ? "bg-primary" : "bg-border")} />
           ))}
         </div>
       </div>
@@ -147,7 +147,7 @@ export default function OnboardingPage() {
               value={details.name}
               onChange={(e) => setDetails((prev) => ({ ...prev, name: e.target.value }))}
               placeholder="Ananya Rao"
-              className="mt-1 w-full rounded-sm border border-cream/15 bg-roast px-3 py-2.5 text-sm text-cream focus:border-amber/60 focus:outline-none"
+              className="mt-1 w-full rounded-sm border border-border bg-card px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
             />
           </label>
           <label className="block text-sm font-medium">
@@ -157,7 +157,7 @@ export default function OnboardingPage() {
               value={details.handle}
               onChange={(e) => setDetails((prev) => ({ ...prev, handle: e.target.value }))}
               placeholder="ananya_pourover"
-              className="mt-1 w-full rounded-sm border border-cream/15 bg-roast px-3 py-2.5 text-sm text-cream focus:border-amber/60 focus:outline-none"
+              className="mt-1 w-full rounded-sm border border-border bg-card px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
             />
           </label>
           <label className="block text-sm font-medium">
@@ -167,7 +167,7 @@ export default function OnboardingPage() {
               value={details.phone}
               onChange={(e) => setDetails((prev) => ({ ...prev, phone: e.target.value }))}
               placeholder="98765 43210"
-              className="mt-1 w-full rounded-sm border border-cream/15 bg-roast px-3 py-2.5 text-sm text-cream focus:border-amber/60 focus:outline-none"
+              className="mt-1 w-full rounded-sm border border-border bg-card px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
             />
           </label>
           <label className="block text-sm font-medium">
@@ -177,7 +177,7 @@ export default function OnboardingPage() {
               value={details.location}
               onChange={(e) => setDetails((prev) => ({ ...prev, location: e.target.value }))}
               placeholder="Bangalore, Karnataka"
-              className="mt-1 w-full rounded-sm border border-cream/15 bg-roast px-3 py-2.5 text-sm text-cream focus:border-amber/60 focus:outline-none"
+              className="mt-1 w-full rounded-sm border border-border bg-card px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
             />
           </label>
           <label className="block text-sm font-medium">
@@ -187,7 +187,7 @@ export default function OnboardingPage() {
               onChange={(e) => setDetails((prev) => ({ ...prev, bio: e.target.value }))}
               placeholder="Home brewer chasing clarity in Indian specialty coffee."
               rows={3}
-              className="mt-1 w-full rounded-sm border border-cream/15 bg-roast px-3 py-2.5 text-sm text-cream focus:border-amber/60 focus:outline-none"
+              className="mt-1 w-full rounded-sm border border-border bg-card px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
             />
           </label>
         </div>
@@ -199,10 +199,13 @@ export default function OnboardingPage() {
               <button
                 key={item}
                 type="button"
+                aria-pressed={active}
                 onClick={() => toggle(current.id, item)}
                 className={cn(
-                  "rounded-full border px-4 py-2 text-sm transition-colors",
-                  active ? "border-amber bg-amber/20 text-amber" : "border-cream/15 text-cream/70 hover:border-cream/30",
+                  "rounded-full border px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30",
+                  active
+                    ? "border-primary bg-primary text-background shadow-sm"
+                    : "border-primary/30 bg-transparent text-foreground hover:border-primary hover:bg-primary/5",
                 )}
               >
                 {item}
@@ -213,11 +216,11 @@ export default function OnboardingPage() {
       )}
 
       {current.id === "flavors" && (
-        <div className="mt-8 rounded-2xl border border-amber/20 bg-roast p-4">
-          <p className="text-sm font-medium text-amber">Preview: Your flavor DNA</p>
+        <div className="mt-8 rounded-2xl border border-border bg-card p-4">
+          <p className="text-sm font-medium text-accent">Preview: Your flavor DNA</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {(selected.flavors ?? []).map((flavor) => (
-              <span key={flavor} className="rounded-full bg-amber/10 px-3 py-1 text-xs text-cream">
+              <span key={flavor} className="rounded-full bg-primary/10 px-3 py-1 text-xs text-foreground">
                 {flavor}
               </span>
             ))}
@@ -225,14 +228,14 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      {message && <p className="mt-6 text-sm text-amber">{message}</p>}
+      {message && <p className="mt-6 text-sm text-accent">{message}</p>}
 
       <div className="mt-10 flex justify-between">
         <button
           type="button"
           disabled={step === 0}
           onClick={() => setStep((currentStep) => currentStep - 1)}
-          className="rounded-full px-4 py-2 text-sm text-cream/60 disabled:opacity-30"
+          className="rounded-full px-4 py-2 text-sm text-muted hover:text-foreground disabled:opacity-30"
         >
           Back
         </button>
@@ -241,7 +244,7 @@ export default function OnboardingPage() {
             type="button"
             disabled={saving}
             onClick={saveOnboarding}
-            className="flex items-center gap-2 rounded-full bg-amber px-6 py-2 text-sm font-medium text-espresso disabled:opacity-60"
+            className="flex items-center gap-2 rounded-full bg-primary px-6 py-2 text-sm font-medium text-background disabled:opacity-60"
           >
             <Check className="h-4 w-4" />
             {saving ? "Saving..." : "Save profile & DNA"}
@@ -250,7 +253,7 @@ export default function OnboardingPage() {
           <button
             type="button"
             onClick={() => setStep((currentStep) => currentStep + 1)}
-            className="rounded-full bg-amber px-6 py-2 text-sm font-medium text-espresso"
+            className="rounded-full bg-primary px-6 py-2 text-sm font-medium text-background"
           >
             Continue
           </button>
