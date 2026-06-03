@@ -23,6 +23,10 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const { error } = await supabase.auth.getUser();
+  if (error) {
+    return supabaseResponse;
+  }
+
   return supabaseResponse;
 }

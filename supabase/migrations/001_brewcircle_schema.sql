@@ -90,8 +90,11 @@ begin
 end;
 $$;
 
+drop trigger if exists profiles_updated_at on public.profiles;
 create trigger profiles_updated_at before update on public.profiles
   for each row execute procedure public.set_updated_at();
+
+drop trigger if exists listings_updated_at on public.marketplace_listings;
 create trigger listings_updated_at before update on public.marketplace_listings
   for each row execute procedure public.set_updated_at();
 

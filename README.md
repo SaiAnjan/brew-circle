@@ -5,9 +5,10 @@ India's marketplace and community for home specialty coffee brewers.
 ## Stack
 
 - **Next.js** (App Router) + TypeScript + Tailwind
-- **Supabase** — open-source Postgres, Row Level Security, phone OTP auth, storage-ready
+- **Supabase** — open-source Postgres, Row Level Security, marketplace/profile data
+- **Firebase Auth** — phone OTP sign-in
 
-We use Supabase (same pattern as [my-portfolio](https://github.com/SaiAnjan/newportolfio)) instead of Firebase: Postgres fits marketplace listings, profiles, and Coffee DNA; generous free tier; you can self-host if needed.
+We use Supabase for structured marketplace data because Postgres fits listings, profiles, and Coffee DNA well. Firebase handles phone OTP so BrewCircle does not need a separate Twilio or MessageBird setup for SMS during the MVP.
 
 ## Setup
 
@@ -23,22 +24,28 @@ We use Supabase (same pattern as [my-portfolio](https://github.com/SaiAnjan/newp
 
    `supabase/migrations/001_brewcircle_schema.sql`
 
-4. Enable **Phone** auth: Authentication → Providers → Phone (Twilio/MessageBird per [Supabase docs](https://supabase.com/docs/guides/auth/phone-login)).
+4. Create or reuse a Firebase web app and enable **Phone** in Firebase Authentication → Sign-in method.
 
-5. Add to `.env.local`:
+5. Add `localhost` and `brew-circle.vercel.app` in Firebase Authentication → Settings → Authorized domains.
+
+6. Add to `.env.local`:
 
    ```
    NEXT_PUBLIC_SUPABASE_URL=...
    NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   NEXT_PUBLIC_FIREBASE_API_KEY=...
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+   NEXT_PUBLIC_FIREBASE_APP_ID=...
    ```
 
-6. Dev server:
+7. Dev server:
 
    ```bash
    npm run dev
    ```
 
-Without Supabase env vars, the app uses local mock data (marketplace images from Unsplash).
+Without Supabase env vars, the app uses local mock data (marketplace images from Unsplash). Without Firebase env vars, phone login shows setup guidance.
 
 ## Routes
 
@@ -58,4 +65,4 @@ Without Supabase env vars, the app uses local mock data (marketplace images from
 - `coffee_dna` — methods, equipment, roasters, regions, etc.
 - `marketplace_listings` — buy / sell / rent with `image_url`, price in paise
 
-Auth users are created via phone OTP; a trigger seeds `profiles` + `coffee_dna` on signup.
+Supabase profile writes are still schema-ready. Firebase Phone Auth currently signs users into the web app; deeper Firebase-to-Supabase profile syncing can be added when listing creation and account persistence are wired.

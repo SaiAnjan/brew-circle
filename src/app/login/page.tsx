@@ -1,19 +1,28 @@
 "use client";
 
-import { createClientIfConfigured } from "@/lib/supabase/client";
-import { getSupabaseEnv } from "@/lib/supabase/config";
+import { getFirebaseAuth, isFirebaseConfigured } from "@/lib/firebase/client";
+import { ConfirmationResult, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { configured } = getSupabaseEnv();
+  const configured = isFirebaseConfigured();
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const verifierRef = useRef<RecaptchaVerifier | null>(null);
+  const confirmationRef = useRef<ConfirmationResult | null>(null);
+
+  useEffect(() => {
+    return () => {
+      verifierRef.current?.clear();
+      verifierRef.current = null;
+    };
+  }, []);
 
   const formatPhone = (raw: string) => {
     const digits = raw.replace(/\D/g, "");
@@ -27,18 +36,21 @@ export default function LoginPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const supabase = createClientIfConfigured();
-      if (!supabase) {
-        setMessage("Supabase not configured. Copy .env.local.example → .env.local and enable Phone auth.");
+      if (!configured) {
+        setMessage("Firebase is not configured. Add the Firebase web app values to .env.local.");
         return;
       }
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: formatPhone(phone),
+      const auth = getFirebaseAuth();
+      verifierRef.current?.clear();
+      verifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
+        size: "invisible",
       });
-      if (error) throw error;
+      confirmationRef.current = await signInWithPhoneNumber(auth, formatPhone(phone), verifierRef.current);
       setStep("otp");
       setMessage("OTP sent. Check your SMS.");
     } catch (e) {
+      verifierRef.current?.clear();
+      verifierRef.current = null;
       setMessage(e instanceof Error ? e.message : "Could not send OTP");
     } finally {
       setLoading(false);
@@ -49,14 +61,11 @@ export default function LoginPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const supabase = createClientIfConfigured();
-      if (!supabase) return;
-      const { error } = await supabase.auth.verifyOtp({
-        phone: formatPhone(phone),
-        token: otp,
-        type: "sms",
-      });
-      if (error) throw error;
+      if (!confirmationRef.current) {
+        setMessage("Send an OTP first.");
+        return;
+      }
+      await confirmationRef.current.confirm(otp);
       router.push("/profile");
       router.refresh();
     } catch (e) {
@@ -71,17 +80,18 @@ export default function LoginPage() {
       <h1 className="text-2xl font-semibold tracking-tight text-primary">Sign in</h1>
       <p className="mt-2 text-sm text-muted">
         Mobile number signup · India (+91). Powered by{" "}
-        <a href="https://supabase.com" className="underline" target="_blank" rel="noreferrer">
-          Supabase
+        <a href="https://firebase.google.com/products/auth" className="underline" target="_blank" rel="noreferrer">
+          Firebase Phone Auth
         </a>{" "}
-        (open-source Postgres + Auth).
+        with Supabase for marketplace data.
       </p>
 
       {!configured && (
         <p className="mt-4 rounded-sm border border-primary/20 bg-card p-3 text-xs leading-relaxed text-foreground/80">
-          Dev mode: add <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-          <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> from your Supabase project (same as
-          my-portfolio). Enable Phone provider in Authentication settings.
+          Dev mode: add <code className="font-mono">NEXT_PUBLIC_FIREBASE_API_KEY</code>,{" "}
+          <code className="font-mono">NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN</code>,{" "}
+          <code className="font-mono">NEXT_PUBLIC_FIREBASE_PROJECT_ID</code>, and{" "}
+          <code className="font-mono">NEXT_PUBLIC_FIREBASE_APP_ID</code> from your Firebase web app.
         </p>
       )}
 
@@ -113,6 +123,7 @@ export default function LoginPage() {
         )}
 
         {message && <p className="text-sm text-muted">{message}</p>}
+        <div id="recaptcha-container" />
 
         <button
           type="button"
