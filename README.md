@@ -5,9 +5,9 @@ India's marketplace and community for home specialty coffee brewers.
 ## Stack
 
 - **Next.js** (App Router) + TypeScript + Tailwind
-- **Supabase** — open-source Postgres, Row Level Security, marketplace/profile data, email OTP sign-in
+- **Supabase** — open-source Postgres, Row Level Security, marketplace/profile data, email magic-link sign-in
 
-We use Supabase for structured marketplace data and email OTP auth because Postgres fits listings, profiles, and Coffee DNA well. Phone number is collected during onboarding after email verification.
+We use Supabase for structured marketplace data and email magic-link auth because Postgres fits listings, profiles, and Coffee DNA well. Phone number is collected during onboarding after email verification.
 
 ## Setup
 
@@ -50,7 +50,7 @@ Without Supabase env vars, the app uses local mock data (marketplace images from
 |-------|---------|
 | `/` | **Marketplace home** (listings with photos) |
 | `/marketplace/[id]` | Listing detail |
-| `/login` | Email OTP signup |
+| `/login` | Email magic-link signup |
 | `/profile` | Profile + DNA (loads from DB when signed in) |
 | `/discover` | Beans, brewers, sessions |
 | `/onboarding` | Coffee DNA wizard |
@@ -62,4 +62,4 @@ Without Supabase env vars, the app uses local mock data (marketplace images from
 - `coffee_dna` — methods, equipment, roasters, regions, etc.
 - `marketplace_listings` — buy / sell / rent with `image_url`, price in paise
 
-Supabase Auth creates users by email OTP. The signup trigger seeds `profiles` + `coffee_dna`; onboarding then saves name, handle, phone number, location, bio, and Coffee DNA.
+Supabase Auth creates users by email magic link. The signup trigger seeds `profiles` + `coffee_dna`; onboarding then saves name, handle, phone number, location, bio, and Coffee DNA.

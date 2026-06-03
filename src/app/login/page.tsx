@@ -3,19 +3,16 @@
 import { createClientIfConfigured } from "@/lib/supabase/client";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const { configured } = getSupabaseEnv();
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"email" | "otp">("email");
+  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const sendOtp = async () => {
+  const sendMagicLink = async () => {
     setLoading(true);
     setMessage(null);
     try {
@@ -28,41 +25,16 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
           shouldCreateUser: true,
         },
       });
       if (error) throw error;
 
-      setStep("otp");
-      setMessage("OTP sent. Check your email.");
+      setSent(true);
+      setMessage("Magic link sent. Open your email and click the link to continue onboarding.");
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Could not send OTP");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyOtp = async () => {
-    setLoading(true);
-    setMessage(null);
-    try {
-      const supabase = createClientIfConfigured();
-      if (!supabase) {
-        setMessage("Supabase is not configured.");
-        return;
-      }
-
-      const { error } = await supabase.auth.verifyOtp({
-        email: email.trim(),
-        token: otp.trim(),
-        type: "email",
-      });
-      if (error) throw error;
-
-      router.push("/onboarding");
-      router.refresh();
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Invalid OTP");
+      setMessage(e instanceof Error ? e.message : "Could not send magic link");
     } finally {
       setLoading(false);
     }
@@ -72,7 +44,7 @@ export default function LoginPage() {
     <div className="mx-auto max-w-md px-4 py-12">
       <h1 className="text-2xl font-semibold tracking-tight text-primary">Sign in</h1>
       <p className="mt-2 text-sm text-muted">
-        Email OTP signup. Powered by{" "}
+        Email magic-link signup. Powered by{" "}
         <a href="https://supabase.com" className="underline" target="_blank" rel="noreferrer">
           Supabase Auth
         </a>{" "}
@@ -94,38 +66,24 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            disabled={step === "otp"}
+            disabled={sent}
             className="mt-1 w-full rounded-sm border border-primary/20 bg-card px-3 py-2.5 text-sm focus:border-primary/40 focus:outline-none"
           />
         </label>
-
-        {step === "otp" && (
-          <label className="block text-sm font-medium">
-            OTP code
-            <input
-              type="text"
-              inputMode="numeric"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              placeholder="6-digit code"
-              className="mt-1 w-full rounded-sm border border-primary/20 bg-card px-3 py-2.5 text-sm focus:border-primary/40 focus:outline-none"
-            />
-          </label>
-        )}
 
         {message && <p className="text-sm text-muted">{message}</p>}
 
         <button
           type="button"
-          disabled={loading}
-          onClick={() => (step === "email" ? sendOtp() : verifyOtp())}
+          disabled={loading || sent}
+          onClick={sendMagicLink}
           className="w-full rounded-sm bg-primary py-2.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-50"
         >
-          {loading ? "Please wait…" : step === "email" ? "Send email OTP" : "Verify & continue"}
+          {loading ? "Please wait..." : sent ? "Check your email" : "Send magic link"}
         </button>
 
-        {step === "otp" && (
-          <button type="button" className="w-full text-sm text-muted hover:text-primary" onClick={() => setStep("email")}>
+        {sent && (
+          <button type="button" className="w-full text-sm text-muted hover:text-primary" onClick={() => setSent(false)}>
             Change email
           </button>
         )}
