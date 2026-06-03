@@ -50,7 +50,8 @@ Without Supabase env vars, the app uses local mock data (marketplace images from
 |-------|---------|
 | `/` | **Marketplace home** (listings with photos) |
 | `/marketplace/[id]` | Listing detail |
-| `/login` | Email magic-link signup |
+| `/login` | Existing-user email sign-in |
+| `/signup` | New-user account creation |
 | `/profile` | Profile + DNA (loads from DB when signed in) |
 | `/discover` | Beans, brewers, sessions |
 | `/onboarding` | Coffee DNA wizard |

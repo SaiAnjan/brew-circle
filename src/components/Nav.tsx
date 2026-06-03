@@ -47,10 +47,10 @@ export function Nav() {
             Sign in
           </Link>
           <Link
-            href="/onboarding"
+            href="/signup"
             className="ml-1 rounded-sm bg-primary px-3 py-1 text-[15px] font-medium text-background hover:opacity-90"
           >
-            DNA Setup
+            Sign up
           </Link>
         </nav>
         <button
@@ -79,6 +79,9 @@ export function Nav() {
           ))}
           <Link href="/login" onClick={() => setOpen(false)} className="mt-2 block px-2 py-2 text-sm font-medium">
             Sign in
+          </Link>
+          <Link href="/signup" onClick={() => setOpen(false)} className="block px-2 py-2 text-sm font-medium text-primary">
+            Sign up
           </Link>
         </nav>
       )}

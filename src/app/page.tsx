@@ -47,8 +47,11 @@ export default async function MarketplaceHomePage() {
           ))}
         </div>
         <div className="flex flex-wrap gap-3 pt-1 text-sm">
-          <Link href="/login" className="font-medium text-primary hover:underline">
-            Sign in with mobile →
+          <Link href="/signup" className="font-medium text-primary hover:underline">
+            Create your BrewCircle profile →
+          </Link>
+          <Link href="/login" className="text-muted hover:text-primary">
+            Sign in
           </Link>
           <Link href="/discover" className="text-muted hover:text-primary">
             Beans & community

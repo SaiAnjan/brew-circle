@@ -1,10 +1,10 @@
 import { EmailAuthForm } from "@/components/EmailAuthForm";
 import { Suspense } from "react";
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <Suspense>
-      <EmailAuthForm mode="signin" />
+      <EmailAuthForm mode="signup" />
     </Suspense>
   );
 }
