@@ -27,6 +27,10 @@ We use Supabase for structured marketplace data and email magic-link auth becaus
 
    `supabase/migrations/002_email_signup_onboarding.sql`
 
+   If accounts existed before `profiles.email` was added, also run:
+
+   `supabase/migrations/003_backfill_profile_emails.sql`
+
 4. In Supabase Authentication → Providers, ensure **Email** is enabled.
 
 5. Add to `.env.local`:

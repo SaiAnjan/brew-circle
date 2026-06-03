@@ -20,6 +20,7 @@ export function EmailAuthForm({ mode }: EmailAuthFormProps) {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [unknownEmail, setUnknownEmail] = useState(false);
+  const [existingEmail, setExistingEmail] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const isSignup = mode === "signup";
@@ -29,11 +30,31 @@ export function EmailAuthForm({ mode }: EmailAuthFormProps) {
     setLoading(true);
     setMessage(null);
     setUnknownEmail(false);
+    setExistingEmail(false);
 
     try {
       const supabase = createClientIfConfigured();
       if (!supabase) {
         setMessage("Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+        return;
+      }
+
+      const { data: existingProfile, error: lookupError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", normalizedEmail)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+
+      if (!isSignup && !existingProfile) {
+        setUnknownEmail(true);
+        setMessage("No BrewCircle account found for this email.");
+        return;
+      }
+
+      if (isSignup && existingProfile) {
+        setExistingEmail(true);
+        setMessage("A BrewCircle account already exists for this email.");
         return;
       }
 
@@ -95,6 +116,7 @@ export function EmailAuthForm({ mode }: EmailAuthFormProps) {
             onChange={(event) => {
               setEmail(event.target.value);
               setUnknownEmail(false);
+              setExistingEmail(false);
             }}
             placeholder="you@example.com"
             disabled={sent}
@@ -125,6 +147,15 @@ export function EmailAuthForm({ mode }: EmailAuthFormProps) {
             className="block w-full rounded-sm border border-primary/20 py-2.5 text-center text-sm font-medium hover:bg-primary/5"
           >
             Sign up with this email
+          </Link>
+        )}
+
+        {existingEmail && (
+          <Link
+            href={alternateHref}
+            className="block w-full rounded-sm border border-primary/20 py-2.5 text-center text-sm font-medium hover:bg-primary/5"
+          >
+            Sign in with this email
           </Link>
         )}
 
