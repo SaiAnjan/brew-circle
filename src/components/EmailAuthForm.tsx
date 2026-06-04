@@ -20,6 +20,15 @@ function isMissingProfileEmailColumn(error: { code?: string; message?: string } 
   );
 }
 
+function getAuthErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return fallback;
+}
+
 export function EmailAuthForm({ mode }: EmailAuthFormProps) {
   const { configured } = getSupabaseEnv();
   const searchParams = useSearchParams();
@@ -92,7 +101,7 @@ export function EmailAuthForm({ mode }: EmailAuthFormProps) {
           : "Sign-in link sent. Open your email to access your account.",
       );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : `Could not send ${isSignup ? "sign-up" : "sign-in"} link`);
+      setMessage(getAuthErrorMessage(error, `Could not send ${isSignup ? "sign-up" : "sign-in"} link`));
     } finally {
       setLoading(false);
     }
