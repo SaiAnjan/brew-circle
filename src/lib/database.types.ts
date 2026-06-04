@@ -7,6 +7,9 @@ export type DbProfile = {
   avatar_initials: string | null;
   bio: string | null;
   location: string | null;
+  coffee_persona: string | null;
+  coffee_personality: string | null;
+  taste_summary: string | null;
   brew_count: number;
   follower_count: number;
   flavor_coverage: Record<string, number>;
@@ -26,6 +29,11 @@ export type DbCoffeeDna = {
   flavor_prefs: string[];
   regions: string[];
   estates: string[];
+  usual_drinks: string[];
+  cafe_visit_reasons: string[];
+  cafe_frequency: string;
+  learning_goals: string[];
+  experience_level: string;
 };
 
 export type DbMarketplaceListing = {

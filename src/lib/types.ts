@@ -1,5 +1,7 @@
 export type BrewMethod = "Espresso" | "V60" | "Aeropress" | "French Press" | "Moka Pot" | "Cold Brew";
 
+export type CoffeePersona = "home_brewer" | "cafe_regular" | "casual_drinker" | "coffee_curious" | "coffee_enthusiast";
+
 export type FlavorNote =
   | "Chocolate"
   | "Nutty"
@@ -34,6 +36,11 @@ export interface CoffeeDNA {
   flavorPrefs: FlavorNote[];
   regions: string[];
   estates: string[];
+  usualDrinks?: string[];
+  cafeVisitReasons?: string[];
+  cafeFrequency?: string;
+  learningGoals?: string[];
+  experienceLevel?: string;
 }
 
 export interface JourneyMilestone {
@@ -100,6 +107,9 @@ export interface UserProfile {
   avatar: string;
   bio: string;
   location: string;
+  coffeePersona?: CoffeePersona | null;
+  coffeePersonality?: string | null;
+  tasteSummary?: string | null;
   brewCount: number;
   followerCount: number;
   dna: CoffeeDNA;

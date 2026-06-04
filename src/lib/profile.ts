@@ -1,5 +1,5 @@
 import { currentUser } from "@/lib/data";
-import type { UserProfile } from "@/lib/types";
+import type { CoffeePersona, UserProfile } from "@/lib/types";
 import type { DbCoffeeDna, DbProfile } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -12,6 +12,9 @@ function dbToUserProfile(row: DbProfile, dna: DbCoffeeDna | null): UserProfile {
     avatar: row.avatar_initials ?? "BC",
     bio: row.bio ?? "",
     location: row.location ?? "",
+    coffeePersona: row.coffee_persona as CoffeePersona | null,
+    coffeePersonality: row.coffee_personality,
+    tasteSummary: row.taste_summary,
     brewCount: row.brew_count,
     followerCount: row.follower_count,
     dna: {
@@ -24,6 +27,11 @@ function dbToUserProfile(row: DbProfile, dna: DbCoffeeDna | null): UserProfile {
       flavorPrefs: (dna?.flavor_prefs ?? []) as UserProfile["dna"]["flavorPrefs"],
       regions: dna?.regions ?? [],
       estates: dna?.estates ?? [],
+      usualDrinks: dna?.usual_drinks ?? [],
+      cafeVisitReasons: dna?.cafe_visit_reasons ?? [],
+      cafeFrequency: dna?.cafe_frequency ?? "",
+      learningGoals: dna?.learning_goals ?? [],
+      experienceLevel: dna?.experience_level ?? "",
     },
     flavorCoverage: flavorCoverage as UserProfile["flavorCoverage"],
     journey: (row.journey ?? []) as UserProfile["journey"],
@@ -56,6 +64,11 @@ export async function updateCoffeeDna(
     equipment: string[];
     flavor_prefs: string[];
     regions: string[];
+    usual_drinks: string[];
+    cafe_visit_reasons: string[];
+    cafe_frequency: string;
+    learning_goals: string[];
+    experience_level: string;
   }>,
 ) {
   const supabase = await createClient();

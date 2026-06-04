@@ -5,10 +5,10 @@ function TagGroup({ label, items }: { label: string; items: string[] }) {
   if (!items.length) return null;
   return (
     <div>
-      <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-cream/40">{label}</p>
+      <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted">{label}</p>
       <div className="flex flex-wrap gap-1.5">
         {items.map((item) => (
-          <span key={item} className="rounded-full border border-cream/10 bg-espresso px-2.5 py-1 text-xs text-cream/90">
+          <span key={item} className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground">
             {item}
           </span>
         ))}
@@ -19,10 +19,10 @@ function TagGroup({ label, items }: { label: string; items: string[] }) {
 
 export function DNAProfile({ dna }: { dna: CoffeeDNA }) {
   return (
-    <div className="rounded-2xl border border-amber/20 bg-gradient-to-br from-roast to-espresso p-5">
+    <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center gap-2">
-        <Dna className="h-5 w-5 text-amber" />
-        <h3 className="font-display text-lg text-cream">Coffee DNA</h3>
+        <Dna className="h-5 w-5 text-accent" />
+        <h3 className="font-display text-lg text-foreground">Coffee DNA</h3>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <TagGroup label="Methods" items={dna.methods} />
