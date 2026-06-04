@@ -6,9 +6,12 @@ import { beans, flavorSuggestions } from "@/lib/data";
 import { getCurrentUserProfile } from "@/lib/profile";
 import type { UserProfile } from "@/lib/types";
 import { MapPin, Star } from "lucide-react";
+import { redirect } from "next/navigation";
 
 export default async function ProfilePage() {
   const user = await getCurrentUserProfile();
+  if (!user) redirect("/login");
+
   const userBeans = beans.filter((b) => user.dna.favoriteBeans.some((f) => b.name.includes(f.split(" ")[0]) || b.name === f));
   const isDiscoveryProfile =
     user.coffeePersona === "cafe_regular" || user.coffeePersona === "casual_drinker" || user.coffeePersona === "coffee_curious";

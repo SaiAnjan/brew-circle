@@ -40,17 +40,17 @@ function dbToUserProfile(row: DbProfile, dna: DbCoffeeDna | null): UserProfile {
   };
 }
 
-export async function getCurrentUserProfile(): Promise<UserProfile> {
+export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   const supabase = await createClient();
   if (!supabase) return currentUser;
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return currentUser;
+  if (!user) return null;
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-  if (!profile) return currentUser;
+  if (!profile) return null;
 
   const { data: dna } = await supabase.from("coffee_dna").select("*").eq("user_id", user.id).single();
 

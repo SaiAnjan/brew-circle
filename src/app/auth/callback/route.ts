@@ -1,17 +1,33 @@
-import { createClient } from "@/lib/supabase/server";
 import type { DbCoffeeDna, DbProfile } from "@/lib/database.types";
+import { getSupabaseEnv } from "@/lib/supabase/config";
+import { createServerClient } from "@supabase/ssr";
 import { isOnboardingComplete } from "@/lib/onboarding";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/profile";
   let target = next;
+  const response = NextResponse.redirect(`${origin}${target}`);
 
   if (code) {
-    const supabase = await createClient();
-    if (supabase) {
+    const { url, key, configured } = getSupabaseEnv();
+    if (configured) {
+      const supabase = createServerClient(url!, key!, {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options);
+            });
+          },
+        },
+      });
+
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (!error) {
         const {
@@ -36,5 +52,6 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}${target}`);
+  response.headers.set("Location", `${origin}${target}`);
+  return response;
 }
