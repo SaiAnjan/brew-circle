@@ -12,6 +12,14 @@ type EmailAuthFormProps = {
   mode: AuthMode;
 };
 
+function isMissingProfileEmailColumn(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return Boolean(
+    error &&
+      (error.code === "42703" || (message.includes("profiles.email") && message.includes("does not exist"))),
+  );
+}
+
 export function EmailAuthForm({ mode }: EmailAuthFormProps) {
   const { configured } = getSupabaseEnv();
   const searchParams = useSearchParams();
@@ -44,15 +52,16 @@ export function EmailAuthForm({ mode }: EmailAuthFormProps) {
         .select("id")
         .eq("email", normalizedEmail)
         .maybeSingle();
-      if (lookupError) throw lookupError;
+      const canCheckExistingProfile = !isMissingProfileEmailColumn(lookupError);
+      if (lookupError && canCheckExistingProfile) throw lookupError;
 
-      if (!isSignup && !existingProfile) {
+      if (!isSignup && canCheckExistingProfile && !existingProfile) {
         setUnknownEmail(true);
         setMessage("No BrewCircle account found for this email.");
         return;
       }
 
-      if (isSignup && existingProfile) {
+      if (isSignup && canCheckExistingProfile && existingProfile) {
         setExistingEmail(true);
         setMessage("A BrewCircle account already exists for this email.");
         return;
