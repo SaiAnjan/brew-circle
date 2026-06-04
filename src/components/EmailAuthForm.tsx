@@ -1,7 +1,7 @@
 "use client";
 
 import { createClientIfConfigured } from "@/lib/supabase/client";
-import { getSupabaseEnv } from "@/lib/supabase/config";
+import { getAuthRedirectOrigin, getSupabaseEnv } from "@/lib/supabase/config";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -79,7 +79,7 @@ export function EmailAuthForm({ mode }: EmailAuthFormProps) {
       const { error } = await supabase.auth.signInWithOtp({
         email: normalizedEmail,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=${isSignup ? "/onboarding" : "/profile"}`,
+          emailRedirectTo: `${getAuthRedirectOrigin(window.location.origin)}/auth/callback?next=${isSignup ? "/onboarding" : "/profile"}`,
           shouldCreateUser: isSignup,
         },
       });
