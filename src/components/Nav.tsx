@@ -19,7 +19,34 @@ const links = [
 type AuthNavState = {
   status: "loading" | "signed-out" | "signed-in";
   onboarded: boolean;
+  avatarInitials: string;
+  displayName: string;
 };
+
+const signedOutAuthState: AuthNavState = {
+  status: "signed-out",
+  onboarded: false,
+  avatarInitials: "BC",
+  displayName: "Profile",
+};
+
+function getAvatarInitials(profile: DbProfile | null, email?: string) {
+  const storedInitials = profile?.avatar_initials?.trim();
+  if (storedInitials) return storedInitials.slice(0, 2).toUpperCase();
+
+  const nameInitials = profile?.name
+    ?.trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("");
+
+  if (nameInitials) return nameInitials.toUpperCase();
+
+  const emailPrefix = email?.trim().slice(0, 2);
+  return emailPrefix ? emailPrefix.toUpperCase() : "BC";
+}
 
 export function Nav() {
   const pathname = usePathname();
@@ -28,12 +55,14 @@ export function Nav() {
   const [authState, setAuthState] = useState<AuthNavState>({
     status: "loading",
     onboarded: false,
+    avatarInitials: "BC",
+    displayName: "Profile",
   });
 
   useEffect(() => {
     const supabase = createClientIfConfigured();
     if (!supabase) {
-      queueMicrotask(() => setAuthState({ status: "signed-out", onboarded: false }));
+      queueMicrotask(() => setAuthState(signedOutAuthState));
       return;
     }
 
@@ -47,7 +76,7 @@ export function Nav() {
       if (!active) return;
 
       if (!user) {
-        setAuthState({ status: "signed-out", onboarded: false });
+        setAuthState(signedOutAuthState);
         return;
       }
 
@@ -61,6 +90,8 @@ export function Nav() {
       setAuthState({
         status: "signed-in",
         onboarded: isOnboardingComplete(profile as DbProfile | null, dna as DbCoffeeDna | null),
+        avatarInitials: getAvatarInitials(profile as DbProfile | null, user.email),
+        displayName: profile?.name?.trim() || user.email || "Profile",
       });
     };
 
@@ -82,14 +113,13 @@ export function Nav() {
     if (supabase) {
       await supabase.auth.signOut();
     }
-    setAuthState({ status: "signed-out", onboarded: false });
+    setAuthState(signedOutAuthState);
     setOpen(false);
     router.push("/");
     router.refresh();
   };
 
   const accountHref = authState.onboarded ? "/profile" : "/onboarding";
-  const accountLabel = authState.onboarded ? "Profile" : "Finish setup";
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
@@ -115,12 +145,23 @@ export function Nav() {
           ))}
           {authState.status === "signed-in" ? (
             <>
-              <Link
-                href={accountHref}
-                className="ml-2 rounded-sm bg-primary px-3 py-1 text-[15px] font-medium text-background hover:opacity-90"
-              >
-                {accountLabel}
-              </Link>
+              {authState.onboarded ? (
+                <Link
+                  href="/profile"
+                  aria-label={`Open ${authState.displayName}'s profile`}
+                  title={authState.displayName}
+                  className="ml-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-background transition-opacity hover:opacity-90"
+                >
+                  {authState.avatarInitials}
+                </Link>
+              ) : (
+                <Link
+                  href={accountHref}
+                  className="ml-2 rounded-sm bg-primary px-3 py-1 text-[15px] font-medium text-background hover:opacity-90"
+                >
+                  Finish setup
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={signOut}
@@ -172,8 +213,21 @@ export function Nav() {
           ))}
           {authState.status === "signed-in" ? (
             <>
-              <Link href={accountHref} onClick={() => setOpen(false)} className="mt-2 block px-2 py-2 text-sm font-medium text-primary">
-                {accountLabel}
+              <Link
+                href={accountHref}
+                onClick={() => setOpen(false)}
+                className="mt-2 flex items-center gap-3 px-2 py-2 text-sm font-medium text-primary"
+              >
+                {authState.onboarded ? (
+                  <>
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-background">
+                      {authState.avatarInitials}
+                    </span>
+                    <span>Profile</span>
+                  </>
+                ) : (
+                  "Finish setup"
+                )}
               </Link>
               <button type="button" onClick={signOut} className="block px-2 py-2 text-sm font-medium">
                 Sign out
