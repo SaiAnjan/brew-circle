@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { DNAProfile } from "@/components/DNAProfile";
+import { EmptyState } from "@/components/EmptyState";
 import { FlavorWheel } from "@/components/FlavorWheel";
 import { JourneyTimeline } from "@/components/JourneyTimeline";
 import { beans, flavorSuggestions } from "@/lib/data";
 import { getCurrentUserProfile } from "@/lib/profile";
 import type { UserProfile } from "@/lib/types";
-import { MapPin, Star } from "lucide-react";
+import { Bean, Calendar, MapPin, MessageCircle, Star } from "lucide-react";
 import { redirect } from "next/navigation";
 
 export default async function ProfilePage() {
@@ -79,23 +80,43 @@ export default async function ProfilePage() {
 
         <section>
           <h2 className="mb-4 font-display text-xl text-foreground">Coffee journey</h2>
-          <JourneyTimeline milestones={user.journey} />
+          {user.journey.length ? (
+            <JourneyTimeline milestones={user.journey} />
+          ) : (
+            <EmptyState
+              icon={<Calendar className="h-5 w-5" />}
+              title="No coffee journey yet"
+              description="BrewCircle will build this timeline as you log brews, join sessions, ask questions, and interact with the marketplace."
+              actionHref="/discover"
+              actionLabel="Explore coffee"
+            />
+          )}
         </section>
 
         {!isDiscoveryProfile && (
           <section>
             <h2 className="mb-4 font-display text-xl text-foreground">Current beans</h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(userBeans.length ? userBeans : beans.slice(0, 3)).map((bean) => (
-                <div key={bean.id} className="rounded-2xl border border-border bg-card p-4">
-                  <h3 className="font-medium text-foreground">{bean.name}</h3>
-                  <p className="text-sm text-muted">
-                    {bean.estate} · {bean.roaster}
-                  </p>
-                  <p className="mt-2 text-xs text-muted">Brew: {bean.brewingRecommendations.join(" · ")}</p>
-                </div>
-              ))}
-            </div>
+            {userBeans.length ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {userBeans.map((bean) => (
+                  <div key={bean.id} className="rounded-2xl border border-border bg-card p-4">
+                    <h3 className="font-medium text-foreground">{bean.name}</h3>
+                    <p className="text-sm text-muted">
+                      {bean.estate} · {bean.roaster}
+                    </p>
+                    <p className="mt-2 text-xs text-muted">Brew: {bean.brewingRecommendations.join(" · ")}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={<Bean className="h-5 w-5" />}
+                title="No beans added yet"
+                description="Add favorite beans in onboarding so BrewCircle can make recommendations that match your taste."
+                actionHref="/onboarding"
+                actionLabel="Add beans"
+              />
+            )}
           </section>
         )}
 
@@ -109,6 +130,16 @@ export default async function ProfilePage() {
           <Link href="/community" className="mt-4 inline-block text-sm text-accent hover:underline">
             Browse community →
           </Link>
+          {user.qaStats.questions + user.qaStats.answers + user.qaStats.accepted === 0 && (
+            <EmptyState
+              className="mt-4"
+              icon={<MessageCircle className="h-5 w-5" />}
+              title="No community activity yet"
+              description="Your questions, answers, and accepted answers will appear here once you start using the community."
+              actionHref="/community"
+              actionLabel="Visit community"
+            />
+          )}
         </section>
       </div>
     </div>
@@ -116,6 +147,14 @@ export default async function ProfilePage() {
 }
 
 function DiscoveryProfileCard({ user }: { user: UserProfile }) {
+  const discoveryGroups = [
+    { label: "Usually drinks", items: user.dna.usualDrinks ?? [] },
+    { label: "Café rhythm", items: user.dna.cafeFrequency ? [user.dna.cafeFrequency] : [] },
+    { label: "Café use", items: user.dna.cafeVisitReasons ?? [] },
+    { label: "Wants to discover", items: user.dna.learningGoals ?? [] },
+  ];
+  const hasDiscoverySignals = discoveryGroups.some((group) => group.items.length > 0);
+
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <p className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-foreground">
@@ -124,12 +163,21 @@ function DiscoveryProfileCard({ user }: { user: UserProfile }) {
       <p className="mt-4 max-w-2xl text-sm text-muted">
         {user.tasteSummary ?? "BrewCircle is learning what you enjoy from the coffee choices you already make."}
       </p>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <DiscoveryGroup label="Usually drinks" items={user.dna.usualDrinks ?? []} />
-        <DiscoveryGroup label="Café rhythm" items={user.dna.cafeFrequency ? [user.dna.cafeFrequency] : []} />
-        <DiscoveryGroup label="Café use" items={user.dna.cafeVisitReasons ?? []} />
-        <DiscoveryGroup label="Wants to discover" items={user.dna.learningGoals ?? []} />
-      </div>
+      {hasDiscoverySignals ? (
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          {discoveryGroups.map((group) => (
+            <DiscoveryGroup key={group.label} label={group.label} items={group.items} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          className="mt-5 border-border/70 bg-background/60"
+          title="No discovery signals yet"
+          description="Pick the drinks and café habits you already know. BrewCircle will translate that into a simple taste profile."
+          actionHref="/onboarding"
+          actionLabel="Update preferences"
+        />
+      )}
     </div>
   );
 }

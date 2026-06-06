@@ -53,9 +53,11 @@ export async function getMarketplaceListings(): Promise<MarketplaceListing[]> {
     .eq("status", "active")
     .order("created_at", { ascending: false });
 
-  if (error || !data?.length) {
+  if (error) {
     return mockListings.map(mockListingWithImages);
   }
+
+  if (!data?.length) return [];
 
   return (data as DbMarketplaceListing[]).map(dbListingToCard);
 }

@@ -1,5 +1,7 @@
+import { EmptyState } from "@/components/EmptyState";
 import { SessionCard } from "@/components/SessionCard";
 import { sessions } from "@/lib/data";
+import { Calendar } from "lucide-react";
 
 export default function SessionsPage() {
   return (
@@ -20,6 +22,16 @@ export default function SessionsPage() {
           <SessionCard key={session.id} session={session} />
         ))}
       </div>
+      {sessions.length === 0 && (
+        <EmptyState
+          className="mt-8"
+          icon={<Calendar className="h-5 w-5" />}
+          title="No sessions scheduled"
+          description="Coffee workshops, tastings, and café experiences will show here when hosts publish them."
+          actionHref="/discover"
+          actionLabel="Back to discover"
+        />
+      )}
     </div>
   );
 }

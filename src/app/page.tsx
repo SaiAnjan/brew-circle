@@ -1,6 +1,7 @@
 import { MarketplaceCard } from "@/components/MarketplaceCard";
+import { EmptyState } from "@/components/EmptyState";
 import { getMarketplaceListings } from "@/lib/marketplace";
-import { Search } from "lucide-react";
+import { Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -78,7 +79,14 @@ export default async function MarketplaceHomePage({
       </div>
 
       {listings.length === 0 && (
-        <p className="py-12 text-center text-sm text-muted">No listings yet. Be the first to post.</p>
+        <EmptyState
+          className="mt-4"
+          icon={<ShoppingBag className="h-5 w-5" />}
+          title="No marketplace listings yet"
+          description="Listings will appear here once brewers start posting gear, beans, or rental offers."
+          actionHref="/signup"
+          actionLabel="Create your profile"
+        />
       )}
     </div>
   );

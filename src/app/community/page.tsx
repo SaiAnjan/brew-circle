@@ -1,5 +1,7 @@
+import { EmptyState } from "@/components/EmptyState";
 import { QAItem } from "@/components/QAItem";
 import { qaQuestions } from "@/lib/data";
+import { MessageCircleQuestion } from "lucide-react";
 
 export default function CommunityPage() {
   return (
@@ -20,6 +22,16 @@ export default function CommunityPage() {
           <QAItem key={q.id} question={q} />
         ))}
       </div>
+      {qaQuestions.length === 0 && (
+        <EmptyState
+          className="mt-8"
+          icon={<MessageCircleQuestion className="h-5 w-5" />}
+          title="No questions yet"
+          description="Community questions will appear here once brewers and café regulars start asking for help."
+          actionHref="/signup"
+          actionLabel="Join BrewCircle"
+        />
+      )}
     </div>
   );
 }
