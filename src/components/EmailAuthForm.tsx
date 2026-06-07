@@ -179,10 +179,11 @@ export function EmailAuthForm() {
         if (profileInsertError) throw profileInsertError;
       }
 
-      const { error: dnaUpsertError } = await supabase
-        .from("coffee_dna")
-        .upsert({ user_id: user.id }, { onConflict: "user_id" });
-      if (dnaUpsertError) throw dnaUpsertError;
+      const { data: existingDna } = await supabase.from("coffee_dna").select("user_id").eq("user_id", user.id).maybeSingle();
+      if (!existingDna) {
+        const { error: dnaInsertError } = await supabase.from("coffee_dna").insert({ user_id: user.id });
+        if (dnaInsertError) throw dnaInsertError;
+      }
 
       const [{ data: profile }, { data: dna }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),

@@ -405,13 +405,36 @@ export default function OnboardingPage() {
       };
       const profileResult = await supabase
         .from("profiles")
-        .upsert({ id: user.id, ...profilePatch }, { onConflict: "id" });
+        .update(profilePatch)
+        .eq("id", user.id)
+        .select("id")
+        .maybeSingle();
       if (profileResult.error) {
         if (!isMissingColumnError(profileResult.error)) throw profileResult.error;
         const fallbackProfileResult = await supabase
           .from("profiles")
-          .upsert({ id: user.id, ...baseProfilePatch }, { onConflict: "id" });
+          .update(baseProfilePatch)
+          .eq("id", user.id)
+          .select("id")
+          .maybeSingle();
         if (fallbackProfileResult.error) throw fallbackProfileResult.error;
+        if (!fallbackProfileResult.data) {
+          const fallbackProfileInsertResult = await supabase
+            .from("profiles")
+            .insert({ id: user.id, ...baseProfilePatch });
+          if (fallbackProfileInsertResult.error) throw fallbackProfileInsertResult.error;
+        }
+      } else if (!profileResult.data) {
+        const profileInsertResult = await supabase
+          .from("profiles")
+          .insert({ id: user.id, ...profilePatch });
+        if (profileInsertResult.error) {
+          if (!isMissingColumnError(profileInsertResult.error)) throw profileInsertResult.error;
+          const fallbackProfileInsertResult = await supabase
+            .from("profiles")
+            .insert({ id: user.id, ...baseProfilePatch });
+          if (fallbackProfileInsertResult.error) throw fallbackProfileInsertResult.error;
+        }
       }
 
       const isHomePath = HOME_PERSONAS.has(persona);
@@ -434,13 +457,36 @@ export default function OnboardingPage() {
       };
       const dnaResult = await supabase
         .from("coffee_dna")
-        .upsert({ user_id: user.id, ...dnaPatch }, { onConflict: "user_id" });
+        .update(dnaPatch)
+        .eq("user_id", user.id)
+        .select("user_id")
+        .maybeSingle();
       if (dnaResult.error) {
         if (!isMissingColumnError(dnaResult.error)) throw dnaResult.error;
         const fallbackDnaResult = await supabase
           .from("coffee_dna")
-          .upsert({ user_id: user.id, ...legacyDnaPatch }, { onConflict: "user_id" });
+          .update(legacyDnaPatch)
+          .eq("user_id", user.id)
+          .select("user_id")
+          .maybeSingle();
         if (fallbackDnaResult.error) throw fallbackDnaResult.error;
+        if (!fallbackDnaResult.data) {
+          const fallbackDnaInsertResult = await supabase
+            .from("coffee_dna")
+            .insert({ user_id: user.id, ...legacyDnaPatch });
+          if (fallbackDnaInsertResult.error) throw fallbackDnaInsertResult.error;
+        }
+      } else if (!dnaResult.data) {
+        const dnaInsertResult = await supabase
+          .from("coffee_dna")
+          .insert({ user_id: user.id, ...dnaPatch });
+        if (dnaInsertResult.error) {
+          if (!isMissingColumnError(dnaInsertResult.error)) throw dnaInsertResult.error;
+          const fallbackDnaInsertResult = await supabase
+            .from("coffee_dna")
+            .insert({ user_id: user.id, ...legacyDnaPatch });
+          if (fallbackDnaInsertResult.error) throw fallbackDnaInsertResult.error;
+        }
       }
 
       router.push("/profile");
