@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClientIfConfigured } from "@/lib/supabase/client";
 import type { BrewMethod, CoffeePersona, FlavorNote } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -244,6 +244,34 @@ export default function OnboardingPage() {
     learningGoals: [],
   });
 
+  useEffect(() => {
+    const loadExistingProfile = async () => {
+      const supabase = createClientIfConfigured();
+      if (!supabase) return;
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name, handle, phone, location, bio")
+        .eq("id", user.id)
+        .single();
+
+      setDetails((prev) => ({
+        name: prev.name || profile?.name || "",
+        handle: prev.handle || profile?.handle || "",
+        phone: prev.phone || user.phone || profile?.phone || "",
+        location: prev.location || profile?.location || "",
+        bio: prev.bio || profile?.bio || "",
+      }));
+    };
+
+    loadExistingProfile();
+  }, []);
+
   const steps = useMemo(() => getSteps(persona), [persona]);
   const current = steps[Math.min(step, steps.length - 1)];
   const options: Partial<Record<StepId, string[]>> = {
@@ -321,12 +349,18 @@ export default function OnboardingPage() {
 
       const name = details.name.trim() || "Brewer";
       const handle = details.handle.trim().replace(/^@/, "") || `brewer_${user.id.slice(0, 8)}`;
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("phone")
+        .eq("id", user.id)
+        .single();
+      const phone = formatPhone(details.phone) || user.phone || existingProfile?.phone || "";
       const coffeePersonality = getCoffeePersonality(persona, selected);
       const tasteSummary = getTasteSummary(persona, selected);
       const baseProfilePatch = {
         name,
         handle,
-        phone: formatPhone(details.phone),
+        phone,
         location: details.location.trim(),
         bio: details.bio.trim(),
         avatar_initials: getInitials(name),
