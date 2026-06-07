@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClientIfConfigured } from "@/lib/supabase/client";
+import { claimCurrentUserProfile } from "@/lib/auth-profile";
 import type { BrewMethod, CoffeePersona, FlavorNote } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
@@ -225,6 +226,17 @@ const isMissingColumnError = (error: { code?: string; message?: string } | null)
 
 const normalizeEmail = (raw: string) => raw.trim().toLowerCase();
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const maybeError = error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown };
+    const parts = [maybeError.message, maybeError.details, maybeError.hint, maybeError.code]
+      .filter((part): part is string => typeof part === "string" && Boolean(part.trim()));
+    if (parts.length) return parts.join(" ");
+  }
+  return fallback;
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -263,6 +275,8 @@ export default function OnboardingPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+
+      await claimCurrentUserProfile(supabase);
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -358,6 +372,8 @@ export default function OnboardingPage() {
         return;
       }
 
+      await claimCurrentUserProfile(supabase);
+
       const name = details.name.trim() || "Brewer";
       const handle = details.handle.trim().replace(/^@/, "") || `brewer_${user.id.slice(0, 8)}`;
       const { data: existingProfile } = await supabase
@@ -369,30 +385,24 @@ export default function OnboardingPage() {
       const phone = formatPhone(details.phone) || user.phone || existingProfile?.phone || "";
       const authEmail = normalizeEmail(user.email ?? "");
       const authPhone = formatPhone(user.phone ?? "");
-
-      if (email && email !== authEmail) {
-        const { error } = await supabase.auth.updateUser({ email });
-        if (error) throw error;
-        setContactVerification({ type: "email", value: email, token: "" });
-        setMessage(`Enter the OTP sent to ${email} to link this email to your BrewCircle account.`);
-        return;
-      }
-
-      if (phone && phone !== authPhone) {
-        const { error } = await supabase.auth.updateUser({ phone });
-        if (error) throw error;
-        setContactVerification({ type: "phone", value: phone, token: "" });
-        setMessage(`Enter the OTP sent to ${phone} to link this phone number to your BrewCircle account.`);
-        return;
-      }
+      const [{ data: profileWithEmail }, { data: profileWithPhone }] = await Promise.all([
+        email
+          ? supabase.from("profiles").select("id").eq("email", email).neq("id", user.id).maybeSingle()
+          : Promise.resolve({ data: null }),
+        phone
+          ? supabase.from("profiles").select("id").eq("phone", phone).neq("id", user.id).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+      const profileEmail = profileWithEmail ? "" : email;
+      const profilePhone = profileWithPhone ? "" : phone;
 
       const coffeePersonality = getCoffeePersonality(persona, selected);
       const tasteSummary = getTasteSummary(persona, selected);
       const baseProfilePatch = {
         name,
         handle,
-        email: email || null,
-        phone: phone || null,
+        email: profileEmail || null,
+        phone: profilePhone || null,
         location: details.location.trim(),
         bio: details.bio.trim(),
         avatar_initials: getInitials(name),
@@ -489,10 +499,30 @@ export default function OnboardingPage() {
         }
       }
 
+      if (email && email !== authEmail) {
+        const { error } = await supabase.auth.updateUser({ email });
+        if (!error) {
+          setContactVerification({ type: "email", value: email, token: "" });
+          setMessage(`Profile saved. Enter the OTP sent to ${email} to also link this email for future login.`);
+          return;
+        }
+        setMessage(`Profile saved, but email linking failed: ${getErrorMessage(error, "Could not send email verification OTP")}`);
+      }
+
+      if (phone && phone !== authPhone) {
+        const { error } = await supabase.auth.updateUser({ phone });
+        if (!error) {
+          setContactVerification({ type: "phone", value: phone, token: "" });
+          setMessage(`Profile saved. Enter the OTP sent to ${phone} to also link this phone number for future login.`);
+          return;
+        }
+        setMessage(`Profile saved, but phone linking failed: ${getErrorMessage(error, "Could not send phone verification OTP")}`);
+      }
+
       router.push("/profile");
       router.refresh();
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Could not save onboarding");
+      setMessage(getErrorMessage(e, "Could not save onboarding"));
     } finally {
       setSaving(false);
     }
@@ -536,7 +566,7 @@ export default function OnboardingPage() {
       setMessage(`${contactVerification.type === "email" ? "Email" : "Phone number"} linked. Finishing your profile...`);
       await saveOnboarding();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not verify contact method.");
+      setMessage(getErrorMessage(error, "Could not verify contact method."));
     } finally {
       setSaving(false);
     }

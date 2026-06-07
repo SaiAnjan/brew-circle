@@ -4,6 +4,7 @@ import { createClientIfConfigured } from "@/lib/supabase/client";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import type { DbCoffeeDna, DbProfile } from "@/lib/database.types";
 import { isOnboardingComplete } from "@/lib/onboarding";
+import { claimCurrentUserProfile } from "@/lib/auth-profile";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -154,6 +155,8 @@ export function EmailAuthForm() {
         setMessage("OTP verified, but no user session was returned.");
         return;
       }
+
+      await claimCurrentUserProfile(supabase);
 
       const contactPatch =
         sentIdentifier.type === "email"
