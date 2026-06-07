@@ -1,24 +1,17 @@
 "use client";
 
 import { createClientIfConfigured } from "@/lib/supabase/client";
-import { getAuthRedirectOrigin, getSupabaseEnv } from "@/lib/supabase/config";
+import { getSupabaseEnv } from "@/lib/supabase/config";
+import type { DbCoffeeDna, DbProfile } from "@/lib/database.types";
+import { isOnboardingComplete } from "@/lib/onboarding";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
-type AuthMode = "signin" | "signup";
-
-type EmailAuthFormProps = {
-  mode: AuthMode;
+type AuthIdentifier = {
+  type: "email" | "phone";
+  value: string;
 };
-
-function isMissingProfileEmailColumn(error: { code?: string; message?: string } | null) {
-  const message = error?.message?.toLowerCase() ?? "";
-  return Boolean(
-    error &&
-      (error.code === "42703" || (message.includes("profiles.email") && message.includes("does not exist"))),
-  );
-}
 
 function getAuthErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message;
@@ -29,25 +22,50 @@ function getAuthErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-export function EmailAuthForm({ mode }: EmailAuthFormProps) {
+function normalizePhone(raw: string) {
+  const trimmed = raw.trim();
+  const digits = trimmed.replace(/\D/g, "");
+
+  if (trimmed.startsWith("+") && digits.length >= 8) return `+${digits}`;
+  if (digits.startsWith("91") && digits.length === 12) return `+${digits}`;
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length > 10) return `+${digits}`;
+
+  return "";
+}
+
+function parseIdentifier(raw: string): AuthIdentifier | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.includes("@")) {
+    const email = trimmed.toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? { type: "email", value: email } : null;
+  }
+
+  const phone = normalizePhone(trimmed);
+  return phone ? { type: "phone", value: phone } : null;
+}
+
+export function EmailAuthForm() {
   const { configured } = getSupabaseEnv();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const initialEmail = useMemo(() => searchParams.get("email") ?? "", [searchParams]);
-  const [email, setEmail] = useState(initialEmail);
+  const initialIdentifier = useMemo(() => searchParams.get("email") ?? searchParams.get("phone") ?? "", [searchParams]);
+  const [identifierInput, setIdentifierInput] = useState(initialIdentifier);
+  const [sentIdentifier, setSentIdentifier] = useState<AuthIdentifier | null>(null);
+  const [otp, setOtp] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [unknownEmail, setUnknownEmail] = useState(false);
-  const [existingEmail, setExistingEmail] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const isSignup = mode === "signup";
-  const normalizedEmail = email.trim().toLowerCase();
+  const identifier = parseIdentifier(identifierInput);
+  const canSendCode = Boolean(identifier);
+  const identifierLabel = sentIdentifier?.type === "phone" ? "phone" : "email";
 
-  const sendLink = async () => {
+  const sendCode = async () => {
     setLoading(true);
     setMessage(null);
-    setUnknownEmail(false);
-    setExistingEmail(false);
 
     try {
       const supabase = createClientIfConfigured();
@@ -56,66 +74,114 @@ export function EmailAuthForm({ mode }: EmailAuthFormProps) {
         return;
       }
 
-      const { data: existingProfile, error: lookupError } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("email", normalizedEmail)
-        .maybeSingle();
-      const canCheckExistingProfile = !isMissingProfileEmailColumn(lookupError);
-      if (lookupError && canCheckExistingProfile) throw lookupError;
-
-      if (!isSignup && canCheckExistingProfile && !existingProfile) {
-        setUnknownEmail(true);
-        setMessage("No BrewCircle account found for this email.");
+      if (!identifier) {
+        setMessage("Enter a valid email or phone number.");
         return;
       }
 
-      if (isSignup && canCheckExistingProfile && existingProfile) {
-        setExistingEmail(true);
-        setMessage("A BrewCircle account already exists for this email.");
-        return;
-      }
+      const { error } =
+        identifier.type === "email"
+          ? await supabase.auth.signInWithOtp({
+              email: identifier.value,
+              options: {
+                shouldCreateUser: true,
+              },
+            })
+          : await supabase.auth.signInWithOtp({
+              phone: identifier.value,
+              options: {
+                shouldCreateUser: true,
+                channel: "sms",
+              },
+            });
 
-      const { error } = await supabase.auth.signInWithOtp({
-        email: normalizedEmail,
-        options: {
-          emailRedirectTo: `${getAuthRedirectOrigin(window.location.origin)}/auth/callback?next=${isSignup ? "/onboarding" : "/profile"}`,
-          shouldCreateUser: isSignup,
-        },
-      });
-
-      if (error) {
-        const errorText = error.message.toLowerCase();
-        if (!isSignup && (errorText.includes("signup") || errorText.includes("not found") || errorText.includes("user"))) {
-          setUnknownEmail(true);
-          setMessage("No BrewCircle account found for this email.");
-          return;
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       setSent(true);
-      setMessage(
-        isSignup
-          ? "Sign-up link sent. Open your email to create your account and continue onboarding."
-          : "Sign-in link sent. Open your email to access your account.",
-      );
+      setSentIdentifier(identifier);
+      setOtp("");
+      setMessage(`OTP sent to your ${identifier.type === "email" ? "email" : "phone"}. Enter it below to continue.`);
     } catch (error) {
-      setMessage(getAuthErrorMessage(error, `Could not send ${isSignup ? "sign-up" : "sign-in"} link`));
+      setMessage(getAuthErrorMessage(error, "Could not send OTP"));
     } finally {
       setLoading(false);
     }
   };
 
-  const alternateHref = isSignup ? "/login" : `/signup${normalizedEmail ? `?email=${encodeURIComponent(normalizedEmail)}` : ""}`;
+  const verifyCode = async () => {
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const supabase = createClientIfConfigured();
+      if (!supabase) {
+        setMessage("Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+        return;
+      }
+
+      if (!sentIdentifier) {
+        setMessage("Send an OTP first.");
+        return;
+      }
+
+      const token = otp.trim();
+      if (!token) {
+        setMessage("Enter the OTP.");
+        return;
+      }
+
+      const { data, error } =
+        sentIdentifier.type === "email"
+          ? await supabase.auth.verifyOtp({
+              email: sentIdentifier.value,
+              token,
+              type: "email",
+            })
+          : await supabase.auth.verifyOtp({
+              phone: sentIdentifier.value,
+              token,
+              type: "sms",
+            });
+
+      if (error) throw error;
+
+      const user = data.user;
+      if (!user) {
+        setMessage("OTP verified, but no user session was returned.");
+        return;
+      }
+
+      if (sentIdentifier.type === "email") {
+        await supabase.from("profiles").update({ email: sentIdentifier.value }).eq("id", user.id).is("email", null);
+      } else {
+        await supabase.from("profiles").update({ phone: sentIdentifier.value }).eq("id", user.id).is("phone", null);
+      }
+
+      const [{ data: profile }, { data: dna }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", user.id).single(),
+        supabase.from("coffee_dna").select("*").eq("user_id", user.id).single(),
+      ]);
+
+      const nextPath = isOnboardingComplete(profile as DbProfile | null, dna as DbCoffeeDna | null)
+        ? "/"
+        : "/onboarding";
+
+      router.push(nextPath);
+      router.refresh();
+    } catch (error) {
+      setMessage(getAuthErrorMessage(error, "Could not verify OTP"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-md px-4 py-12">
-      <h1 className="text-2xl font-semibold tracking-tight text-primary">{isSignup ? "Create account" : "Sign in"}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-primary">
+        Sign in or create account
+      </h1>
       <p className="mt-2 text-sm text-muted">
-        {isSignup
-          ? "Create your BrewCircle account with an email link. Phone number is collected during onboarding."
-          : "Sign in with the email linked to your BrewCircle account."}
+        Enter your email or phone number. If it is new, BrewCircle will take you through onboarding after OTP verification.
       </p>
 
       {!configured && (
@@ -127,68 +193,65 @@ export function EmailAuthForm({ mode }: EmailAuthFormProps) {
 
       <div className="mt-8 space-y-4">
         <label className="block text-sm font-medium">
-          Email
+          Email or phone
           <input
-            type="email"
-            value={email}
+            type="text"
+            value={identifierInput}
             onChange={(event) => {
-              setEmail(event.target.value);
-              setUnknownEmail(false);
-              setExistingEmail(false);
+              setIdentifierInput(event.target.value);
+              setMessage(null);
             }}
-            placeholder="you@example.com"
+            placeholder="you@example.com or +91 98765 43210"
             disabled={sent}
+            inputMode="text"
             className="mt-1 w-full rounded-sm border border-primary/20 bg-card px-3 py-2.5 text-sm focus:border-primary/40 focus:outline-none"
           />
         </label>
+
+        {sent && (
+          <label className="block text-sm font-medium">
+            OTP
+            <input
+              type="text"
+              value={otp}
+              onChange={(event) => setOtp(event.target.value.replace(/\s/g, ""))}
+              placeholder="Enter code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              className="mt-1 w-full rounded-sm border border-primary/20 bg-card px-3 py-2.5 text-sm tracking-[0.25em] focus:border-primary/40 focus:outline-none"
+            />
+          </label>
+        )}
 
         {message && <p className="text-sm text-muted">{message}</p>}
 
         <button
           type="button"
-          disabled={loading || sent || !normalizedEmail}
-          onClick={sendLink}
+          disabled={loading || (!sent && !canSendCode) || (sent && !otp.trim())}
+          onClick={sent ? verifyCode : sendCode}
           className="w-full rounded-sm bg-primary py-2.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-50"
         >
-          {loading
-            ? "Please wait..."
-            : sent
-              ? "Check your email"
-              : isSignup
-                ? "Create account"
-                : "Sign in"}
+          {loading ? "Please wait..." : sent ? "Verify OTP" : "Send OTP"}
         </button>
 
-        {unknownEmail && (
-          <Link
-            href={alternateHref}
-            className="block w-full rounded-sm border border-primary/20 py-2.5 text-center text-sm font-medium hover:bg-primary/5"
-          >
-            Sign up with this email
-          </Link>
-        )}
-
-        {existingEmail && (
-          <Link
-            href={alternateHref}
-            className="block w-full rounded-sm border border-primary/20 py-2.5 text-center text-sm font-medium hover:bg-primary/5"
-          >
-            Sign in with this email
-          </Link>
-        )}
-
         {sent && (
-          <button type="button" className="w-full text-sm text-muted hover:text-primary" onClick={() => setSent(false)}>
-            Change email
+          <button
+            type="button"
+            className="w-full text-sm text-muted hover:text-primary"
+            onClick={() => {
+              setSent(false);
+              setSentIdentifier(null);
+              setOtp("");
+              setMessage(null);
+            }}
+          >
+            Change {identifierLabel}
           </button>
         )}
       </div>
 
       <p className="mt-8 text-center text-sm text-muted">
-        {isSignup ? "Already have an account?" : "New to BrewCircle?"}{" "}
-        <Link href={alternateHref} className="text-primary hover:underline">
-          {isSignup ? "Sign in" : "Create account"}
-        </Link>
+        Existing and new users use the same OTP flow.
       </p>
 
       <p className="mt-4 text-center text-sm text-muted">

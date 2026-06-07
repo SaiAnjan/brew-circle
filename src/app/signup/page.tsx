@@ -4,7 +4,7 @@ import { Suspense } from "react";
 export default function SignupPage() {
   return (
     <Suspense>
-      <EmailAuthForm mode="signup" />
+      <EmailAuthForm />
     </Suspense>
   );
 }
