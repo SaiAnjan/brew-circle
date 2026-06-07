@@ -47,6 +47,10 @@ function parseIdentifier(raw: string): AuthIdentifier | null {
   return phone ? { type: "phone", value: phone } : null;
 }
 
+function getDefaultHandle(userId: string) {
+  return `brewer_${userId.slice(0, 8)}`;
+}
+
 export function EmailAuthForm() {
   const { configured } = getSupabaseEnv();
   const router = useRouter();
@@ -151,15 +155,38 @@ export function EmailAuthForm() {
         return;
       }
 
-      if (sentIdentifier.type === "email") {
-        await supabase.from("profiles").update({ email: sentIdentifier.value }).eq("id", user.id).is("email", null);
+      const contactPatch =
+        sentIdentifier.type === "email"
+          ? { email: sentIdentifier.value }
+          : { phone: sentIdentifier.value };
+
+      const { data: existingProfile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+
+      if (existingProfile) {
+        const { error: profileUpdateError } = await supabase
+          .from("profiles")
+          .update(contactPatch)
+          .eq("id", user.id);
+        if (profileUpdateError) throw profileUpdateError;
       } else {
-        await supabase.from("profiles").update({ phone: sentIdentifier.value }).eq("id", user.id).is("phone", null);
+        const { error: profileInsertError } = await supabase.from("profiles").insert({
+          id: user.id,
+          ...contactPatch,
+          name: "Brewer",
+          handle: getDefaultHandle(user.id),
+          avatar_initials: "BC",
+        });
+        if (profileInsertError) throw profileInsertError;
       }
 
+      const { error: dnaUpsertError } = await supabase
+        .from("coffee_dna")
+        .upsert({ user_id: user.id }, { onConflict: "user_id" });
+      if (dnaUpsertError) throw dnaUpsertError;
+
       const [{ data: profile }, { data: dna }] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", user.id).single(),
-        supabase.from("coffee_dna").select("*").eq("user_id", user.id).single(),
+        supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+        supabase.from("coffee_dna").select("*").eq("user_id", user.id).maybeSingle(),
       ]);
 
       const nextPath = isOnboardingComplete(profile as DbProfile | null, dna as DbCoffeeDna | null)

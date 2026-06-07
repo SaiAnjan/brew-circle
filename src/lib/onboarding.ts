@@ -14,7 +14,8 @@ export function isOnboardingComplete(profile: DbProfile | null, dna: DbCoffeeDna
   const hasRealName = hasValue(profile.name) && profile.name !== "Brewer";
   const hasRealHandle = hasValue(profile.handle) && !profile.handle?.startsWith("brewer_");
   const persona = profile.coffee_persona;
-  const hasProfileBasics = hasRealName && hasRealHandle && hasValue(profile.phone) && hasValue(profile.location);
+  const hasContact = hasValue(profile.email) || hasValue(profile.phone);
+  const hasProfileBasics = hasRealName && hasRealHandle && hasContact && hasValue(profile.location);
 
   if (!hasProfileBasics) return false;
 

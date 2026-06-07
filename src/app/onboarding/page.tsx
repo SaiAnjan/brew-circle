@@ -403,10 +403,14 @@ export default function OnboardingPage() {
         coffee_personality: coffeePersonality,
         taste_summary: tasteSummary,
       };
-      const profileResult = await supabase.from("profiles").update(profilePatch).eq("id", user.id);
+      const profileResult = await supabase
+        .from("profiles")
+        .upsert({ id: user.id, ...profilePatch }, { onConflict: "id" });
       if (profileResult.error) {
         if (!isMissingColumnError(profileResult.error)) throw profileResult.error;
-        const fallbackProfileResult = await supabase.from("profiles").update(baseProfilePatch).eq("id", user.id);
+        const fallbackProfileResult = await supabase
+          .from("profiles")
+          .upsert({ id: user.id, ...baseProfilePatch }, { onConflict: "id" });
         if (fallbackProfileResult.error) throw fallbackProfileResult.error;
       }
 
@@ -428,10 +432,14 @@ export default function OnboardingPage() {
         learning_goals: selected.learningGoals ?? [],
         experience_level: isHomePath ? selected.experience?.[0] ?? "" : "Discovery",
       };
-      const dnaResult = await supabase.from("coffee_dna").update(dnaPatch).eq("user_id", user.id);
+      const dnaResult = await supabase
+        .from("coffee_dna")
+        .upsert({ user_id: user.id, ...dnaPatch }, { onConflict: "user_id" });
       if (dnaResult.error) {
         if (!isMissingColumnError(dnaResult.error)) throw dnaResult.error;
-        const fallbackDnaResult = await supabase.from("coffee_dna").update(legacyDnaPatch).eq("user_id", user.id);
+        const fallbackDnaResult = await supabase
+          .from("coffee_dna")
+          .upsert({ user_id: user.id, ...legacyDnaPatch }, { onConflict: "user_id" });
         if (fallbackDnaResult.error) throw fallbackDnaResult.error;
       }
 
