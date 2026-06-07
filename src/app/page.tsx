@@ -1,6 +1,7 @@
 import { MarketplaceCard } from "@/components/MarketplaceCard";
 import { EmptyState } from "@/components/EmptyState";
 import { getMarketplaceListings } from "@/lib/marketplace";
+import { createClient } from "@/lib/supabase/server";
 import { Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -19,7 +20,11 @@ export default async function MarketplaceHomePage({
     redirect(`/auth/callback?code=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}`);
   }
 
-  const listings = await getMarketplaceListings();
+  const [listings, supabase] = await Promise.all([getMarketplaceListings(), createClient()]);
+  const {
+    data: { user },
+  } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
+  const isSignedIn = Boolean(user);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -60,12 +65,20 @@ export default async function MarketplaceHomePage({
           ))}
         </div>
         <div className="flex flex-wrap gap-3 pt-1 text-sm">
-          <Link href="/signup" className="font-medium text-primary hover:underline">
-            Create your BrewCircle profile →
-          </Link>
-          <Link href="/login" className="text-muted hover:text-primary">
-            Sign in
-          </Link>
+          {isSignedIn ? (
+            <Link href="/profile" className="font-medium text-primary hover:underline">
+              View your BrewCircle profile →
+            </Link>
+          ) : (
+            <>
+              <Link href="/signup" className="font-medium text-primary hover:underline">
+                Create your BrewCircle profile →
+              </Link>
+              <Link href="/login" className="text-muted hover:text-primary">
+                Sign in
+              </Link>
+            </>
+          )}
           <Link href="/discover" className="text-muted hover:text-primary">
             Beans & community
           </Link>
@@ -84,8 +97,8 @@ export default async function MarketplaceHomePage({
           icon={<ShoppingBag className="h-5 w-5" />}
           title="No marketplace listings yet"
           description="Listings will appear here once brewers start posting gear, beans, or rental offers."
-          actionHref="/signup"
-          actionLabel="Create your profile"
+          actionHref={isSignedIn ? "/discover" : "/signup"}
+          actionLabel={isSignedIn ? "Explore coffee" : "Create your profile"}
         />
       )}
     </div>
