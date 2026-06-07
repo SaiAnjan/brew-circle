@@ -28,6 +28,12 @@ type OnboardingStep = {
   subtitle: string;
 };
 
+type ContactVerification = {
+  type: "email" | "phone";
+  value: string;
+  token: string;
+};
+
 const PERSONAS: { id: CoffeePersona; label: string; description: string }[] = [
   { id: "home_brewer", label: "Home Brewer", description: "I brew coffee at home regularly." },
   { id: "cafe_regular", label: "Café Regular", description: "I frequently visit cafés." },
@@ -217,15 +223,19 @@ const getTasteSummary = (persona: CoffeePersona, selected: Record<string, string
 const isMissingColumnError = (error: { code?: string; message?: string } | null) =>
   Boolean(error && (error.code === "42703" || error.message?.toLowerCase().includes("column")));
 
+const normalizeEmail = (raw: string) => raw.trim().toLowerCase();
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [persona, setPersona] = useState<CoffeePersona | null>(null);
+  const [contactVerification, setContactVerification] = useState<ContactVerification | null>(null);
   const [details, setDetails] = useState({
     name: "",
     handle: "",
+    email: "",
     phone: "",
     location: "",
     bio: "",
@@ -256,13 +266,14 @@ export default function OnboardingPage() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("name, handle, phone, location, bio")
+        .select("name, handle, email, phone, location, bio")
         .eq("id", user.id)
         .single();
 
       setDetails((prev) => ({
         name: prev.name || profile?.name || "",
         handle: prev.handle || profile?.handle || "",
+        email: prev.email || user.email || profile?.email || "",
         phone: prev.phone || user.phone || profile?.phone || "",
         location: prev.location || profile?.location || "",
         bio: prev.bio || profile?.bio || "",
@@ -351,16 +362,37 @@ export default function OnboardingPage() {
       const handle = details.handle.trim().replace(/^@/, "") || `brewer_${user.id.slice(0, 8)}`;
       const { data: existingProfile } = await supabase
         .from("profiles")
-        .select("phone")
+        .select("email, phone")
         .eq("id", user.id)
         .single();
+      const email = normalizeEmail(details.email) || user.email || existingProfile?.email || "";
       const phone = formatPhone(details.phone) || user.phone || existingProfile?.phone || "";
+      const authEmail = normalizeEmail(user.email ?? "");
+      const authPhone = formatPhone(user.phone ?? "");
+
+      if (email && email !== authEmail) {
+        const { error } = await supabase.auth.updateUser({ email });
+        if (error) throw error;
+        setContactVerification({ type: "email", value: email, token: "" });
+        setMessage(`Enter the OTP sent to ${email} to link this email to your BrewCircle account.`);
+        return;
+      }
+
+      if (phone && phone !== authPhone) {
+        const { error } = await supabase.auth.updateUser({ phone });
+        if (error) throw error;
+        setContactVerification({ type: "phone", value: phone, token: "" });
+        setMessage(`Enter the OTP sent to ${phone} to link this phone number to your BrewCircle account.`);
+        return;
+      }
+
       const coffeePersonality = getCoffeePersonality(persona, selected);
       const tasteSummary = getTasteSummary(persona, selected);
       const baseProfilePatch = {
         name,
         handle,
-        phone,
+        email: email || null,
+        phone: phone || null,
         location: details.location.trim(),
         bio: details.bio.trim(),
         avatar_initials: getInitials(name),
@@ -407,6 +439,50 @@ export default function OnboardingPage() {
       router.refresh();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Could not save onboarding");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const verifyContact = async () => {
+    if (!contactVerification) return;
+
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const supabase = createClientIfConfigured();
+      if (!supabase) {
+        setMessage("Supabase is not configured.");
+        return;
+      }
+
+      const token = contactVerification.token.trim();
+      if (!token) {
+        setMessage("Enter the OTP to verify this contact method.");
+        return;
+      }
+
+      const { error } =
+        contactVerification.type === "email"
+          ? await supabase.auth.verifyOtp({
+              email: contactVerification.value,
+              token,
+              type: "email_change",
+            })
+          : await supabase.auth.verifyOtp({
+              phone: contactVerification.value,
+              token,
+              type: "phone_change",
+            });
+
+      if (error) throw error;
+
+      setContactVerification(null);
+      setMessage(`${contactVerification.type === "email" ? "Email" : "Phone number"} linked. Finishing your profile...`);
+      await saveOnboarding();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not verify contact method.");
     } finally {
       setSaving(false);
     }
@@ -476,11 +552,27 @@ export default function OnboardingPage() {
             />
           </label>
           <label className="block text-sm font-medium">
+            Email
+            <input
+              type="email"
+              value={details.email}
+              onChange={(e) => {
+                setDetails((prev) => ({ ...prev, email: e.target.value }));
+                setContactVerification(null);
+              }}
+              placeholder="you@example.com"
+              className="mt-1 w-full rounded-sm border border-border bg-card px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
+            />
+          </label>
+          <label className="block text-sm font-medium">
             Phone number
             <input
               type="tel"
               value={details.phone}
-              onChange={(e) => setDetails((prev) => ({ ...prev, phone: e.target.value }))}
+              onChange={(e) => {
+                setDetails((prev) => ({ ...prev, phone: e.target.value }));
+                setContactVerification(null);
+              }}
               placeholder="98765 43210"
               className="mt-1 w-full rounded-sm border border-border bg-card px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
             />
@@ -530,6 +622,40 @@ export default function OnboardingPage() {
         </div>
       )}
 
+      {contactVerification && (
+        <div className="mt-8 rounded-2xl border border-accent/30 bg-card p-4">
+          <p className="text-sm font-medium text-accent">
+            Verify {contactVerification.type === "email" ? "email" : "phone number"}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            We sent an OTP to {contactVerification.value}. Verify it so both login methods point to the same profile.
+          </p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={contactVerification.token}
+              onChange={(event) =>
+                setContactVerification((prev) =>
+                  prev ? { ...prev, token: event.target.value.replace(/\s/g, "") } : prev,
+                )
+              }
+              placeholder="Enter OTP"
+              className="flex-1 rounded-sm border border-border bg-background px-3 py-2.5 text-sm tracking-[0.25em] text-foreground focus:border-primary focus:outline-none"
+            />
+            <button
+              type="button"
+              disabled={saving || !contactVerification.token.trim()}
+              onClick={verifyContact}
+              className="rounded-sm bg-primary px-4 py-2.5 text-sm font-medium text-background disabled:opacity-50"
+            >
+              {saving ? "Verifying..." : "Verify"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {persona && current.id !== "persona" && (
         <div className="mt-8 rounded-2xl border border-border bg-card p-4">
           <p className="text-sm font-medium text-accent">Preview: Your coffee discovery profile</p>
@@ -554,7 +680,7 @@ export default function OnboardingPage() {
         {isLast ? (
           <button
             type="button"
-            disabled={saving || !canContinue}
+            disabled={saving || !canContinue || Boolean(contactVerification)}
             onClick={saveOnboarding}
             className="flex items-center gap-2 rounded-full bg-primary px-6 py-2 text-sm font-medium text-background disabled:opacity-60"
           >
