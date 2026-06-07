@@ -112,9 +112,9 @@ export default async function ProfilePage() {
               <EmptyState
                 icon={<Bean className="h-5 w-5" />}
                 title="No beans added yet"
-                description="Add favorite beans in onboarding so BrewCircle can make recommendations that match your taste."
-                actionHref="/onboarding"
-                actionLabel="Add beans"
+                description="Explore coffees in Discover. Bean logging will live here when brew tracking is added."
+                actionHref="/discover"
+                actionLabel="Discover beans"
               />
             )}
           </section>
