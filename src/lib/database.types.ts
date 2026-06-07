@@ -10,6 +10,7 @@ export type DbProfile = {
   coffee_persona: string | null;
   coffee_personality: string | null;
   taste_summary: string | null;
+  onboarding_completed_at: string | null;
   brew_count: number;
   follower_count: number;
   flavor_coverage: Record<string, number>;

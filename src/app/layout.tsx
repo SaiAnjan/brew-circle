@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { Nav } from "@/components/Nav";
+import { ToastProvider } from "@/components/ToastProvider";
 import "./globals.css";
 
 const geist = Geist({
@@ -22,11 +23,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable} h-full`}>
       <body className="flex min-h-full flex-col antialiased">
-        <Nav />
-        <main className="flex-1">{children}</main>
-        <footer className="border-t border-border py-8 text-center text-xs text-muted">
-          BrewCircle · India&apos;s home coffee marketplace
-        </footer>
+        <ToastProvider>
+          <Nav />
+          <main className="flex-1">{children}</main>
+          <footer className="border-t border-border py-8 text-center text-xs text-muted">
+            BrewCircle · India&apos;s home coffee marketplace
+          </footer>
+        </ToastProvider>
       </body>
     </html>
   );

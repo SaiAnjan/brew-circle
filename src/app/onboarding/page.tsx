@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClientIfConfigured } from "@/lib/supabase/client";
 import { claimCurrentUserProfile } from "@/lib/auth-profile";
+import { useToast } from "@/components/ToastProvider";
 import type { BrewMethod, CoffeePersona, FlavorNote } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
@@ -239,6 +240,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -347,6 +349,14 @@ export default function OnboardingPage() {
       .map((part) => part[0]?.toUpperCase())
       .join("") || "BC";
 
+  const markOnboardingComplete = async (supabase: NonNullable<ReturnType<typeof createClientIfConfigured>>, userId: string) => {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ onboarding_completed_at: new Date().toISOString() })
+      .eq("id", userId);
+    if (error && !isMissingColumnError(error)) throw error;
+  };
+
   const canContinue =
     !REQUIRED_SELECTION_STEPS.has(current.id) || (current.id === "persona" ? Boolean(persona) : Boolean(selected[current.id]?.length));
 
@@ -356,7 +366,9 @@ export default function OnboardingPage() {
     try {
       const supabase = createClientIfConfigured();
       if (!supabase) {
-        setMessage("Supabase is not configured.");
+        const errorMessage = "Supabase is not configured.";
+        setMessage(errorMessage);
+        showToast({ title: "Supabase is not configured", description: errorMessage, variant: "error" });
         return;
       }
 
@@ -368,7 +380,9 @@ export default function OnboardingPage() {
         return;
       }
       if (!persona) {
-        setMessage("Choose what best describes you before saving.");
+        const errorMessage = "Choose what best describes you before saving.";
+        setMessage(errorMessage);
+        showToast({ title: "Choose your coffee type", description: errorMessage, variant: "warning" });
         return;
       }
 
@@ -499,30 +513,43 @@ export default function OnboardingPage() {
         }
       }
 
+      await markOnboardingComplete(supabase, user.id);
+
       if (email && email !== authEmail) {
         const { error } = await supabase.auth.updateUser({ email });
         if (!error) {
           setContactVerification({ type: "email", value: email, token: "" });
-          setMessage(`Profile saved. Enter the OTP sent to ${email} to also link this email for future login.`);
+          const successMessage = `Profile saved. Enter the OTP sent to ${email} to also link this email for future login.`;
+          setMessage(successMessage);
+          showToast({ title: "Profile saved", description: successMessage, variant: "success" });
           return;
         }
-        setMessage(`Profile saved, but email linking failed: ${getErrorMessage(error, "Could not send email verification OTP")}`);
+        const warningMessage = `Profile saved, but email linking failed: ${getErrorMessage(error, "Could not send email verification OTP")}`;
+        setMessage(warningMessage);
+        showToast({ title: "Profile saved", description: warningMessage, variant: "warning" });
       }
 
       if (phone && phone !== authPhone) {
         const { error } = await supabase.auth.updateUser({ phone });
         if (!error) {
           setContactVerification({ type: "phone", value: phone, token: "" });
-          setMessage(`Profile saved. Enter the OTP sent to ${phone} to also link this phone number for future login.`);
+          const successMessage = `Profile saved. Enter the OTP sent to ${phone} to also link this phone number for future login.`;
+          setMessage(successMessage);
+          showToast({ title: "Profile saved", description: successMessage, variant: "success" });
           return;
         }
-        setMessage(`Profile saved, but phone linking failed: ${getErrorMessage(error, "Could not send phone verification OTP")}`);
+        const warningMessage = `Profile saved, but phone linking failed: ${getErrorMessage(error, "Could not send phone verification OTP")}`;
+        setMessage(warningMessage);
+        showToast({ title: "Profile saved", description: warningMessage, variant: "warning" });
       }
 
+      showToast({ title: "Onboarding complete", description: "Your profile is ready.", variant: "success" });
       router.push("/profile");
       router.refresh();
     } catch (e) {
-      setMessage(getErrorMessage(e, "Could not save onboarding"));
+      const errorMessage = getErrorMessage(e, "Could not save onboarding");
+      setMessage(errorMessage);
+      showToast({ title: "Could not save onboarding", description: errorMessage, variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -537,13 +564,17 @@ export default function OnboardingPage() {
     try {
       const supabase = createClientIfConfigured();
       if (!supabase) {
-        setMessage("Supabase is not configured.");
+        const errorMessage = "Supabase is not configured.";
+        setMessage(errorMessage);
+        showToast({ title: "Supabase is not configured", description: errorMessage, variant: "error" });
         return;
       }
 
       const token = contactVerification.token.trim();
       if (!token) {
-        setMessage("Enter the OTP to verify this contact method.");
+        const errorMessage = "Enter the OTP to verify this contact method.";
+        setMessage(errorMessage);
+        showToast({ title: "OTP required", description: errorMessage, variant: "warning" });
         return;
       }
 
@@ -563,10 +594,14 @@ export default function OnboardingPage() {
       if (error) throw error;
 
       setContactVerification(null);
-      setMessage(`${contactVerification.type === "email" ? "Email" : "Phone number"} linked. Finishing your profile...`);
+      const successMessage = `${contactVerification.type === "email" ? "Email" : "Phone number"} linked. Finishing your profile...`;
+      setMessage(successMessage);
+      showToast({ title: "Contact linked", description: successMessage, variant: "success" });
       await saveOnboarding();
     } catch (error) {
-      setMessage(getErrorMessage(error, "Could not verify contact method."));
+      const errorMessage = getErrorMessage(error, "Could not verify contact method.");
+      setMessage(errorMessage);
+      showToast({ title: "Could not verify contact", description: errorMessage, variant: "error" });
     } finally {
       setSaving(false);
     }

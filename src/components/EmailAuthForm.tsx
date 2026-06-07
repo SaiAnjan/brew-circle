@@ -2,6 +2,7 @@
 
 import { createClientIfConfigured } from "@/lib/supabase/client";
 import { getSupabaseEnv } from "@/lib/supabase/config";
+import { useToast } from "@/components/ToastProvider";
 import type { DbCoffeeDna, DbProfile } from "@/lib/database.types";
 import { isOnboardingComplete } from "@/lib/onboarding";
 import { claimCurrentUserProfile } from "@/lib/auth-profile";
@@ -54,6 +55,7 @@ function getDefaultHandle(userId: string) {
 
 export function EmailAuthForm() {
   const { configured } = getSupabaseEnv();
+  const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialIdentifier = useMemo(() => searchParams.get("email") ?? searchParams.get("phone") ?? "", [searchParams]);
@@ -75,12 +77,16 @@ export function EmailAuthForm() {
     try {
       const supabase = createClientIfConfigured();
       if (!supabase) {
-        setMessage("Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+        const errorMessage = "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.";
+        setMessage(errorMessage);
+        showToast({ title: "Auth is not configured", description: errorMessage, variant: "error" });
         return;
       }
 
       if (!identifier) {
-        setMessage("Enter a valid email or phone number.");
+        const errorMessage = "Enter a valid email or phone number.";
+        setMessage(errorMessage);
+        showToast({ title: "Invalid login", description: errorMessage, variant: "error" });
         return;
       }
 
@@ -105,9 +111,13 @@ export function EmailAuthForm() {
       setSent(true);
       setSentIdentifier(identifier);
       setOtp("");
-      setMessage(`OTP sent to your ${identifier.type === "email" ? "email" : "phone"}. Enter it below to continue.`);
+      const successMessage = `OTP sent to your ${identifier.type === "email" ? "email" : "phone"}. Enter it below to continue.`;
+      setMessage(successMessage);
+      showToast({ title: "OTP sent", description: successMessage, variant: "success" });
     } catch (error) {
-      setMessage(getAuthErrorMessage(error, "Could not send OTP"));
+      const errorMessage = getAuthErrorMessage(error, "Could not send OTP");
+      setMessage(errorMessage);
+      showToast({ title: "Could not send OTP", description: errorMessage, variant: "error" });
     } finally {
       setLoading(false);
     }
@@ -120,18 +130,24 @@ export function EmailAuthForm() {
     try {
       const supabase = createClientIfConfigured();
       if (!supabase) {
-        setMessage("Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+        const errorMessage = "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.";
+        setMessage(errorMessage);
+        showToast({ title: "Auth is not configured", description: errorMessage, variant: "error" });
         return;
       }
 
       if (!sentIdentifier) {
-        setMessage("Send an OTP first.");
+        const errorMessage = "Send an OTP first.";
+        setMessage(errorMessage);
+        showToast({ title: "OTP required", description: errorMessage, variant: "error" });
         return;
       }
 
       const token = otp.trim();
       if (!token) {
-        setMessage("Enter the OTP.");
+        const errorMessage = "Enter the OTP.";
+        setMessage(errorMessage);
+        showToast({ title: "OTP required", description: errorMessage, variant: "error" });
         return;
       }
 
@@ -197,10 +213,17 @@ export function EmailAuthForm() {
         ? "/"
         : "/onboarding";
 
+      showToast({
+        title: nextPath === "/" ? "Signed in" : "Account verified",
+        description: nextPath === "/" ? "Opening the marketplace with your account." : "Finish onboarding to complete your profile.",
+        variant: "success",
+      });
       router.push(nextPath);
       router.refresh();
     } catch (error) {
-      setMessage(getAuthErrorMessage(error, "Could not verify OTP"));
+      const errorMessage = getAuthErrorMessage(error, "Could not verify OTP");
+      setMessage(errorMessage);
+      showToast({ title: "Could not verify OTP", description: errorMessage, variant: "error" });
     } finally {
       setLoading(false);
     }

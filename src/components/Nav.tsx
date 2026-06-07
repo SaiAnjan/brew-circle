@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { createClientIfConfigured } from "@/lib/supabase/client";
 import type { DbCoffeeDna, DbProfile } from "@/lib/database.types";
 import { isOnboardingComplete } from "@/lib/onboarding";
+import { useToast } from "@/components/ToastProvider";
 
 const links = [
   { href: "/", label: "Marketplace" },
@@ -51,6 +52,7 @@ function getAvatarInitials(profile: DbProfile | null, email?: string) {
 export function Nav() {
   const pathname = usePathname();
   const router = useRouter();
+  const { showToast } = useToast();
   const [open, setOpen] = useState(false);
   const [authState, setAuthState] = useState<AuthNavState>({
     status: "loading",
@@ -115,6 +117,7 @@ export function Nav() {
     }
     setAuthState(signedOutAuthState);
     setOpen(false);
+    showToast({ title: "Signed out", description: "You have been signed out of BrewCircle.", variant: "success" });
     router.push("/");
     router.refresh();
   };
