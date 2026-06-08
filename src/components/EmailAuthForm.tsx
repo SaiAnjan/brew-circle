@@ -8,12 +8,31 @@ import { isOnboardingComplete } from "@/lib/onboarding";
 import { claimCurrentUserProfile } from "@/lib/auth-profile";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 type AuthIdentifier = {
   type: "email" | "phone";
   value: string;
 };
+
+type AuthFlow = "login" | "signup" | "set-password";
+type AuthStage = "form" | "verify";
+
+type PendingOtp = {
+  flow: Exclude<AuthFlow, "login">;
+  identifier: AuthIdentifier;
+  password: string;
+};
+
+type AuthUser = {
+  id: string;
+  email?: string | null;
+  phone?: string | null;
+};
+
+type AuthClient = NonNullable<ReturnType<typeof createClientIfConfigured>>;
+
+const MIN_PASSWORD_LENGTH = 8;
 
 function getAuthErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message;
@@ -53,189 +72,304 @@ function getDefaultHandle(userId: string) {
   return `brewer_${userId.slice(0, 8)}`;
 }
 
-export function EmailAuthForm() {
+function getContactPatch(identifier: AuthIdentifier) {
+  return identifier.type === "email" ? { email: identifier.value } : { phone: identifier.value };
+}
+
+async function sendOtpForFlow(supabase: AuthClient, pendingOtp: PendingOtp) {
+  if (pendingOtp.identifier.type === "email") {
+    return supabase.auth.signInWithOtp({
+      email: pendingOtp.identifier.value,
+      options: { shouldCreateUser: pendingOtp.flow === "signup" },
+    });
+  }
+
+  return supabase.auth.signInWithOtp({
+    phone: pendingOtp.identifier.value,
+    options: {
+      shouldCreateUser: pendingOtp.flow === "signup",
+      channel: "sms",
+    },
+  });
+}
+
+async function verifyOtpForIdentifier(supabase: AuthClient, identifier: AuthIdentifier, token: string) {
+  if (identifier.type === "email") {
+    return supabase.auth.verifyOtp({
+      email: identifier.value,
+      token,
+      type: "email",
+    });
+  }
+
+  return supabase.auth.verifyOtp({
+    phone: identifier.value,
+    token,
+    type: "sms",
+  });
+}
+
+async function ensureProfileRows(supabase: AuthClient, user: AuthUser, identifier: AuthIdentifier) {
+  await claimCurrentUserProfile(supabase);
+
+  const contactPatch = getContactPatch(identifier);
+  const { data: existingProfile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+
+  if (existingProfile) {
+    await supabase.from("profiles").update(contactPatch).eq("id", user.id);
+  } else {
+    await supabase.from("profiles").insert({
+      id: user.id,
+      ...contactPatch,
+      name: "Brewer",
+      handle: getDefaultHandle(user.id),
+      avatar_initials: "BC",
+    });
+  }
+
+  const { data: existingDna } = await supabase.from("coffee_dna").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (!existingDna) {
+    await supabase.from("coffee_dna").insert({ user_id: user.id });
+  }
+
+  const [{ data: profile }, { data: dna }] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+    supabase.from("coffee_dna").select("*").eq("user_id", user.id).maybeSingle(),
+  ]);
+
+  return isOnboardingComplete(profile as DbProfile | null, dna as DbCoffeeDna | null) ? "/" : "/onboarding";
+}
+
+function getFlowTitle(flow: AuthFlow) {
+  if (flow === "signup") return "Create account";
+  if (flow === "set-password") return "Set your password";
+  return "Sign in";
+}
+
+function getFlowDescription(flow: AuthFlow) {
+  if (flow === "signup") return "Create a BrewCircle account with email or phone. We will verify it once with an OTP.";
+  if (flow === "set-password") return "Use this if your account was created before passwords existed, or if you need a new password.";
+  return "Sign in with the password linked to your BrewCircle account.";
+}
+
+export function EmailAuthForm({ mode = "login" }: { mode?: "login" | "signup" }) {
   const { configured } = getSupabaseEnv();
   const { showToast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialIdentifier = useMemo(() => searchParams.get("email") ?? searchParams.get("phone") ?? "", [searchParams]);
+  const initialIdentifier = searchParams.get("email") ?? searchParams.get("phone") ?? "";
+  const [flow, setFlow] = useState<AuthFlow>(mode);
+  const [stage, setStage] = useState<AuthStage>("form");
   const [identifierInput, setIdentifierInput] = useState(initialIdentifier);
-  const [sentIdentifier, setSentIdentifier] = useState<AuthIdentifier | null>(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pendingOtp, setPendingOtp] = useState<PendingOtp | null>(null);
   const [otp, setOtp] = useState("");
-  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const identifier = parseIdentifier(identifierInput);
-  const canSendCode = Boolean(identifier);
-  const identifierLabel = sentIdentifier?.type === "phone" ? "phone" : "email";
+  const needsPasswordConfirmation = flow !== "login";
+  const passwordReady = flow === "login" ? Boolean(password) : password.length >= MIN_PASSWORD_LENGTH;
+  const passwordsMatch = !needsPasswordConfirmation || password === confirmPassword;
+  const canSubmitForm = Boolean(identifier) && passwordReady && passwordsMatch;
+  const canVerifyOtp = Boolean(pendingOtp && otp.trim());
 
-  const sendCode = async () => {
+  const notify = (title: string, description: string, variant: "success" | "error" | "warning" = "success") => {
+    setMessage(description);
+    showToast({ title, description, variant });
+  };
+
+  const resetFlow = (nextFlow: AuthFlow) => {
+    setFlow(nextFlow);
+    setStage("form");
+    setPassword("");
+    setConfirmPassword("");
+    setPendingOtp(null);
+    setOtp("");
+    setMessage(null);
+  };
+
+  const redirectAfterAuth = async (supabase: AuthClient, user: AuthUser, activeIdentifier: AuthIdentifier) => {
+    const nextPath = await ensureProfileRows(supabase, user, activeIdentifier);
+    showToast({
+      title: nextPath === "/" ? "Signed in" : "Account ready",
+      description: nextPath === "/" ? "Opening the marketplace with your account." : "Finish onboarding to complete your profile.",
+      variant: "success",
+    });
+    router.push(nextPath);
+    router.refresh();
+  };
+
+  const signInWithPassword = async () => {
     setLoading(true);
     setMessage(null);
 
     try {
       const supabase = createClientIfConfigured();
       if (!supabase) {
-        const errorMessage = "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.";
-        setMessage(errorMessage);
-        showToast({ title: "Auth is not configured", description: errorMessage, variant: "error" });
+        notify("Auth is not configured", "Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.", "error");
         return;
       }
 
       if (!identifier) {
-        const errorMessage = "Enter a valid email or phone number.";
-        setMessage(errorMessage);
-        showToast({ title: "Invalid login", description: errorMessage, variant: "error" });
+        notify("Invalid sign in", "Enter a valid email or phone number.", "error");
         return;
       }
 
-      const { error } =
+      if (!password) {
+        notify("Password required", "Enter your account password.", "error");
+        return;
+      }
+
+      const { data, error } =
         identifier.type === "email"
-          ? await supabase.auth.signInWithOtp({
-              email: identifier.value,
-              options: {
-                shouldCreateUser: true,
-              },
-            })
-          : await supabase.auth.signInWithOtp({
-              phone: identifier.value,
-              options: {
-                shouldCreateUser: true,
-                channel: "sms",
-              },
-            });
+          ? await supabase.auth.signInWithPassword({ email: identifier.value, password })
+          : await supabase.auth.signInWithPassword({ phone: identifier.value, password });
 
       if (error) throw error;
+      if (!data.user) {
+        notify("Could not sign in", "Password was accepted, but no user session was returned.", "error");
+        return;
+      }
 
-      setSent(true);
-      setSentIdentifier(identifier);
-      setOtp("");
-      const successMessage = `OTP sent to your ${identifier.type === "email" ? "email" : "phone"}. Enter it below to continue.`;
-      setMessage(successMessage);
-      showToast({ title: "OTP sent", description: successMessage, variant: "success" });
+      await redirectAfterAuth(supabase, data.user, identifier);
     } catch (error) {
-      const errorMessage = getAuthErrorMessage(error, "Could not send OTP");
-      setMessage(errorMessage);
-      showToast({ title: "Could not send OTP", description: errorMessage, variant: "error" });
+      const errorMessage = getAuthErrorMessage(error, "Could not sign in");
+      notify(
+        "Could not sign in",
+        `${errorMessage}. If this account was created before passwords, use “Set password with OTP”.`,
+        "error",
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const verifyCode = async () => {
+  const sendSignupOrPasswordSetupOtp = async () => {
     setLoading(true);
     setMessage(null);
 
     try {
       const supabase = createClientIfConfigured();
       if (!supabase) {
-        const errorMessage = "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.";
-        setMessage(errorMessage);
-        showToast({ title: "Auth is not configured", description: errorMessage, variant: "error" });
+        notify("Auth is not configured", "Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.", "error");
         return;
       }
 
-      if (!sentIdentifier) {
-        const errorMessage = "Send an OTP first.";
-        setMessage(errorMessage);
-        showToast({ title: "OTP required", description: errorMessage, variant: "error" });
+      if (!identifier) {
+        notify("Invalid account", "Enter a valid email or phone number.", "error");
+        return;
+      }
+
+      if (password.length < MIN_PASSWORD_LENGTH) {
+        notify("Password too short", `Use at least ${MIN_PASSWORD_LENGTH} characters.`, "error");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        notify("Passwords do not match", "Re-enter the same password in both fields.", "error");
+        return;
+      }
+
+      if (flow === "signup") {
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq(identifier.type, identifier.value)
+          .maybeSingle();
+
+        if (existingProfile) {
+          resetFlow("login");
+          notify("Account already exists", "Sign in with your password. If you never created one, use Set password with OTP.", "warning");
+          return;
+        }
+      }
+
+      const otpRequest: PendingOtp = { flow: flow === "signup" ? "signup" : "set-password", identifier, password };
+      const { error } = await sendOtpForFlow(supabase, otpRequest);
+      if (error) throw error;
+
+      setPendingOtp(otpRequest);
+      setOtp("");
+      setStage("verify");
+      notify(
+        "OTP sent",
+        `Enter the OTP sent to your ${identifier.type === "email" ? "email" : "phone"} to ${flow === "signup" ? "create your account" : "set your password"}.`,
+      );
+    } catch (error) {
+      const errorMessage = getAuthErrorMessage(error, flow === "signup" ? "Could not start signup" : "Could not send OTP");
+      notify(flow === "signup" ? "Could not create account" : "Could not send OTP", errorMessage, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtpAndSetPassword = async () => {
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const supabase = createClientIfConfigured();
+      if (!supabase) {
+        notify("Auth is not configured", "Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.", "error");
+        return;
+      }
+
+      if (!pendingOtp) {
+        notify("OTP session missing", "Start the flow again to receive a fresh OTP.", "error");
+        setStage("form");
         return;
       }
 
       const token = otp.trim();
       if (!token) {
-        const errorMessage = "Enter the OTP.";
-        setMessage(errorMessage);
-        showToast({ title: "OTP required", description: errorMessage, variant: "error" });
+        notify("OTP required", "Enter the OTP.", "error");
         return;
       }
 
-      const { data, error } =
-        sentIdentifier.type === "email"
-          ? await supabase.auth.verifyOtp({
-              email: sentIdentifier.value,
-              token,
-              type: "email",
-            })
-          : await supabase.auth.verifyOtp({
-              phone: sentIdentifier.value,
-              token,
-              type: "sms",
-            });
-
+      const { data, error } = await verifyOtpForIdentifier(supabase, pendingOtp.identifier, token);
       if (error) throw error;
 
       const user = data.user;
       if (!user) {
-        setMessage("OTP verified, but no user session was returned.");
+        notify("Could not verify OTP", "OTP verified, but no user session was returned.", "error");
         return;
       }
 
-      await claimCurrentUserProfile(supabase);
+      const { error: passwordError } = await supabase.auth.updateUser({ password: pendingOtp.password });
+      if (passwordError) throw passwordError;
 
-      const contactPatch =
-        sentIdentifier.type === "email"
-          ? { email: sentIdentifier.value }
-          : { phone: sentIdentifier.value };
-
-      const { data: existingProfile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
-
-      if (existingProfile) {
-        const { error: profileUpdateError } = await supabase
-          .from("profiles")
-          .update(contactPatch)
-          .eq("id", user.id);
-        if (profileUpdateError) throw profileUpdateError;
-      } else {
-        const { error: profileInsertError } = await supabase.from("profiles").insert({
-          id: user.id,
-          ...contactPatch,
-          name: "Brewer",
-          handle: getDefaultHandle(user.id),
-          avatar_initials: "BC",
-        });
-        if (profileInsertError) throw profileInsertError;
-      }
-
-      const { data: existingDna } = await supabase.from("coffee_dna").select("user_id").eq("user_id", user.id).maybeSingle();
-      if (!existingDna) {
-        const { error: dnaInsertError } = await supabase.from("coffee_dna").insert({ user_id: user.id });
-        if (dnaInsertError) throw dnaInsertError;
-      }
-
-      const [{ data: profile }, { data: dna }] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
-        supabase.from("coffee_dna").select("*").eq("user_id", user.id).maybeSingle(),
-      ]);
-
-      const nextPath = isOnboardingComplete(profile as DbProfile | null, dna as DbCoffeeDna | null)
-        ? "/"
-        : "/onboarding";
-
-      showToast({
-        title: nextPath === "/" ? "Signed in" : "Account verified",
-        description: nextPath === "/" ? "Opening the marketplace with your account." : "Finish onboarding to complete your profile.",
-        variant: "success",
-      });
-      router.push(nextPath);
-      router.refresh();
+      await redirectAfterAuth(supabase, user, pendingOtp.identifier);
     } catch (error) {
       const errorMessage = getAuthErrorMessage(error, "Could not verify OTP");
-      setMessage(errorMessage);
-      showToast({ title: "Could not verify OTP", description: errorMessage, variant: "error" });
+      notify("Could not finish setup", errorMessage, "error");
     } finally {
       setLoading(false);
     }
   };
 
+  const submitForm = () => {
+    if (stage === "verify") {
+      void verifyOtpAndSetPassword();
+      return;
+    }
+
+    if (flow === "login") {
+      void signInWithPassword();
+      return;
+    }
+
+    void sendSignupOrPasswordSetupOtp();
+  };
+
   return (
     <div className="mx-auto max-w-md px-4 py-12">
-      <h1 className="text-2xl font-semibold tracking-tight text-primary">
-        Sign in or create account
-      </h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-primary">{stage === "verify" ? "Verify OTP" : getFlowTitle(flow)}</h1>
       <p className="mt-2 text-sm text-muted">
-        Enter your email or phone number. If it is new, BrewCircle will take you through onboarding after OTP verification.
+        {stage === "verify"
+          ? `This OTP is only for ${pendingOtp?.flow === "signup" ? "account creation" : "password setup"}. Normal sign in uses your password.`
+          : getFlowDescription(flow)}
       </p>
 
       {!configured && (
@@ -256,13 +390,47 @@ export function EmailAuthForm() {
               setMessage(null);
             }}
             placeholder="you@example.com or +91 98765 43210"
-            disabled={sent}
+            disabled={stage === "verify"}
             inputMode="text"
             className="mt-1 w-full rounded-sm border border-primary/20 bg-card px-3 py-2.5 text-sm focus:border-primary/40 focus:outline-none"
           />
         </label>
 
-        {sent && (
+        {stage === "form" && (
+          <>
+            <label className="block text-sm font-medium">
+              {flow === "login" ? "Password" : "Create password"}
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setMessage(null);
+                }}
+                autoComplete={flow === "login" ? "current-password" : "new-password"}
+                className="mt-1 w-full rounded-sm border border-primary/20 bg-card px-3 py-2.5 text-sm focus:border-primary/40 focus:outline-none"
+              />
+            </label>
+
+            {needsPasswordConfirmation && (
+              <label className="block text-sm font-medium">
+                Confirm password
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => {
+                    setConfirmPassword(event.target.value);
+                    setMessage(null);
+                  }}
+                  autoComplete="new-password"
+                  className="mt-1 w-full rounded-sm border border-primary/20 bg-card px-3 py-2.5 text-sm focus:border-primary/40 focus:outline-none"
+                />
+              </label>
+            )}
+          </>
+        )}
+
+        {stage === "verify" && (
           <label className="block text-sm font-medium">
             OTP
             <input
@@ -281,38 +449,71 @@ export function EmailAuthForm() {
 
         <button
           type="button"
-          disabled={loading || (!sent && !canSendCode) || (sent && !otp.trim())}
-          onClick={sent ? verifyCode : sendCode}
+          disabled={loading || (stage === "form" ? !canSubmitForm : !canVerifyOtp)}
+          onClick={submitForm}
           className="w-full rounded-sm bg-primary py-2.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-50"
         >
-          {loading ? "Please wait..." : sent ? "Verify OTP" : "Send OTP"}
+          {loading
+            ? "Please wait..."
+            : stage === "verify"
+              ? pendingOtp?.flow === "signup"
+                ? "Verify and create account"
+                : "Verify and set password"
+              : flow === "login"
+                ? "Sign in"
+                : flow === "signup"
+                  ? "Send signup OTP"
+                  : "Send password setup OTP"}
         </button>
 
-        {sent && (
+        {stage === "verify" && (
           <button
             type="button"
             className="w-full text-sm text-muted hover:text-primary"
             onClick={() => {
-              setSent(false);
-              setSentIdentifier(null);
+              setStage("form");
+              setPendingOtp(null);
               setOtp("");
               setMessage(null);
             }}
           >
-            Change {identifierLabel}
+            Change details
           </button>
         )}
       </div>
 
-      <p className="mt-8 text-center text-sm text-muted">
-        Existing and new users use the same OTP flow.
-      </p>
+      <div className="mt-8 space-y-3 text-center text-sm text-muted">
+        {flow === "login" ? (
+          <>
+            <p>
+              New to BrewCircle?{" "}
+              <Link href="/signup" className="text-primary hover:underline">
+                Create account
+              </Link>
+            </p>
+            <button type="button" className="hover:text-primary" onClick={() => resetFlow("set-password")}>
+              Created before passwords? Set password with OTP
+            </button>
+          </>
+        ) : flow === "signup" ? (
+          <p>
+            Already have an account?{" "}
+            <Link href="/login" className="text-primary hover:underline">
+              Sign in
+            </Link>
+          </p>
+        ) : (
+          <button type="button" className="hover:text-primary" onClick={() => resetFlow("login")}>
+            ← Back to sign in
+          </button>
+        )}
 
-      <p className="mt-4 text-center text-sm text-muted">
-        <Link href="/" className="hover:text-primary">
-          ← Back to marketplace
-        </Link>
-      </p>
+        <p>
+          <Link href="/" className="hover:text-primary">
+            ← Back to marketplace
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }
