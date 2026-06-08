@@ -34,6 +34,13 @@ type AuthClient = NonNullable<ReturnType<typeof createClientIfConfigured>>;
 
 const MIN_PASSWORD_LENGTH = 8;
 
+function generateTemporaryPassword() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  const randomPart = Array.from(bytes, (byte) => byte.toString(36).padStart(2, "0")).join("");
+  return `BrewCircle-${randomPart}-9a!`;
+}
+
 function getAuthErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message;
   if (error && typeof error === "object" && "message" in error) {
@@ -163,14 +170,17 @@ export function EmailAuthForm({ mode = "login" }: { mode?: "login" | "signup" })
   const [identifierInput, setIdentifierInput] = useState(initialIdentifier);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [skipPasswordForNow, setSkipPasswordForNow] = useState(false);
   const [pendingOtp, setPendingOtp] = useState<PendingOtp | null>(null);
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const identifier = parseIdentifier(identifierInput);
-  const needsPasswordConfirmation = flow !== "login";
-  const passwordReady = flow === "login" ? Boolean(password) : password.length >= MIN_PASSWORD_LENGTH;
+  const canSkipPassword = flow === "signup";
+  const isSkippingPassword = canSkipPassword && skipPasswordForNow;
+  const needsPasswordConfirmation = flow !== "login" && !isSkippingPassword;
+  const passwordReady = isSkippingPassword || (flow === "login" ? Boolean(password) : password.length >= MIN_PASSWORD_LENGTH);
   const passwordsMatch = !needsPasswordConfirmation || password === confirmPassword;
   const canSubmitForm = Boolean(identifier) && passwordReady && passwordsMatch;
   const canVerifyOtp = Boolean(pendingOtp && otp.trim());
@@ -185,6 +195,7 @@ export function EmailAuthForm({ mode = "login" }: { mode?: "login" | "signup" })
     setStage("form");
     setPassword("");
     setConfirmPassword("");
+    setSkipPasswordForNow(false);
     setPendingOtp(null);
     setOtp("");
     setMessage(null);
@@ -262,12 +273,12 @@ export function EmailAuthForm({ mode = "login" }: { mode?: "login" | "signup" })
         return;
       }
 
-      if (password.length < MIN_PASSWORD_LENGTH) {
+      if (!isSkippingPassword && password.length < MIN_PASSWORD_LENGTH) {
         notify("Password too short", `Use at least ${MIN_PASSWORD_LENGTH} characters.`, "error");
         return;
       }
 
-      if (password !== confirmPassword) {
+      if (!isSkippingPassword && password !== confirmPassword) {
         notify("Passwords do not match", "Re-enter the same password in both fields.", "error");
         return;
       }
@@ -286,7 +297,11 @@ export function EmailAuthForm({ mode = "login" }: { mode?: "login" | "signup" })
         }
       }
 
-      const otpRequest: PendingOtp = { flow: flow === "signup" ? "signup" : "set-password", identifier, password };
+      const otpRequest: PendingOtp = {
+        flow: flow === "signup" ? "signup" : "set-password",
+        identifier,
+        password: isSkippingPassword ? generateTemporaryPassword() : password,
+      };
       const { error } = await sendOtpForFlow(supabase, otpRequest);
       if (error) throw error;
 
@@ -295,7 +310,13 @@ export function EmailAuthForm({ mode = "login" }: { mode?: "login" | "signup" })
       setStage("verify");
       notify(
         "OTP sent",
-        `Enter the OTP sent to your ${identifier.type === "email" ? "email" : "phone"} to ${flow === "signup" ? "create your account" : "set your password"}.`,
+        `Enter the OTP sent to your ${identifier.type === "email" ? "email" : "phone"} to ${
+          flow === "signup"
+            ? isSkippingPassword
+              ? "create your account and continue to onboarding"
+              : "create your account"
+            : "set your password"
+        }.`,
       );
     } catch (error) {
       const errorMessage = getAuthErrorMessage(error, flow === "signup" ? "Could not start signup" : "Could not send OTP");
@@ -398,19 +419,21 @@ export function EmailAuthForm({ mode = "login" }: { mode?: "login" | "signup" })
 
         {stage === "form" && (
           <>
-            <label className="block text-sm font-medium">
-              {flow === "login" ? "Password" : "Create password"}
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  setMessage(null);
-                }}
-                autoComplete={flow === "login" ? "current-password" : "new-password"}
-                className="mt-1 w-full rounded-sm border border-primary/20 bg-card px-3 py-2.5 text-sm focus:border-primary/40 focus:outline-none"
-              />
-            </label>
+            {!isSkippingPassword && (
+              <label className="block text-sm font-medium">
+                {flow === "login" ? "Password" : "Create password"}
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setMessage(null);
+                  }}
+                  autoComplete={flow === "login" ? "current-password" : "new-password"}
+                  className="mt-1 w-full rounded-sm border border-primary/20 bg-card px-3 py-2.5 text-sm focus:border-primary/40 focus:outline-none"
+                />
+              </label>
+            )}
 
             {needsPasswordConfirmation && (
               <label className="block text-sm font-medium">
@@ -426,6 +449,26 @@ export function EmailAuthForm({ mode = "login" }: { mode?: "login" | "signup" })
                   className="mt-1 w-full rounded-sm border border-primary/20 bg-card px-3 py-2.5 text-sm focus:border-primary/40 focus:outline-none"
                 />
               </label>
+            )}
+
+            {canSkipPassword && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSkipPasswordForNow((currentValue) => !currentValue);
+                  setPassword("");
+                  setConfirmPassword("");
+                  setMessage(null);
+                }}
+                className="w-full rounded-sm border border-primary/20 bg-card px-3 py-2.5 text-left text-sm text-muted hover:border-primary/40 hover:text-primary"
+              >
+                {isSkippingPassword ? "✓ Password will be set later" : "Skip password for now"}
+                <span className="mt-1 block text-xs leading-relaxed text-muted">
+                  {isSkippingPassword
+                    ? "We will generate a temporary internal password after OTP verification. You can set your real password later."
+                    : "Use this to reach onboarding faster. If you sign out, use Set password with OTP before your next login."}
+                </span>
+              </button>
             )}
           </>
         )}
