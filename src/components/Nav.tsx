@@ -12,6 +12,7 @@ import { useToast } from "@/components/ToastProvider";
 
 const links = [
   { href: "/", label: "Marketplace" },
+  { href: "/cafes", label: "Cafés" },
   { href: "/discover", label: "Discover" },
   { href: "/community", label: "Community" },
   { href: "/sessions", label: "Sessions" },

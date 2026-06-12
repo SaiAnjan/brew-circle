@@ -13,6 +13,15 @@ export const metadata: Metadata = {
   title: "BrewCircle — Marketplace for home coffee brewers",
   description:
     "Buy, sell, and rent brewing gear across India. Coffee DNA, community, and sessions.",
+  applicationName: "BrewCircle",
+  appleWebApp: {
+    capable: true,
+    title: "BrewCircle",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({

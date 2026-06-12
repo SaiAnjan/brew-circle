@@ -127,3 +127,28 @@ export interface Brewer {
   specialty: string;
   brewCount: number;
 }
+
+export interface Cafe {
+  id: string;
+  name: string;
+  area: string;
+  city: string;
+  address: string;
+  vibe: string;
+  imageUrl: string;
+  matchReason: string;
+  qrCode: string;
+}
+
+export interface CafeMenuItem {
+  id: string;
+  cafeId: string;
+  name: string;
+  category: string;
+  pricePaise: number;
+  description: string;
+  flavorNotes: FlavorNote[];
+  attributes: string[];
+  dnaSignals: string[];
+  offer?: string;
+}
