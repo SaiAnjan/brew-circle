@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Heart, QrCode, Star } from "lucide-react";
+import { Check, Heart, ReceiptText, Star } from "lucide-react";
 import { createClientIfConfigured } from "@/lib/supabase/client";
 import { useToast } from "@/components/ToastProvider";
 import type { Cafe, CafeMenuItem, FlavorNote } from "@/lib/types";
@@ -181,14 +182,17 @@ export function CafeOrderClient({ cafe, menuItems }: { cafe: Cafe; menuItems: Ca
       <section className="rounded-3xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="rounded-2xl bg-primary/10 p-3 text-primary">
-            <QrCode className="h-5 w-5" />
+            <ReceiptText className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted">QR pilot code</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">POS bill bridge</p>
             <p className="mt-1 font-mono text-sm text-primary">{cafe.qrCode}</p>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              In the café, this page opens from a QR near the counter. Payment is mocked for Phase 1; the important loop is drink → rating → Coffee DNA.
+              In the café, the POS bill number is the bridge. Use the bill journey for the main demo; this menu is a shortcut for testing one drink.
             </p>
+            <Link href={`/bill?cafe=${encodeURIComponent(cafe.id)}`} className="mt-4 inline-flex rounded-2xl bg-primary px-4 py-2.5 text-sm font-medium text-background">
+              Enter bill number
+            </Link>
           </div>
         </div>
       </section>

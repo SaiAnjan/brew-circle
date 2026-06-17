@@ -1,5 +1,5 @@
 -- BrewCircle Phase 1 café order + rating loop.
--- QR/menu/payment is mocked in-app, but these tables store real drink history and DNA signals.
+-- Bill/menu/payment is mocked in-app, but these tables store real drink history and DNA signals.
 
 create table if not exists public.cafes (
   id text primary key,
@@ -39,6 +39,11 @@ create table if not exists public.coffee_orders (
   drink_name text not null,
   price_paise integer not null default 0,
   payment_status text not null default 'paid_mock',
+  invoice_number text,
+  bill_total_paise integer not null default 0,
+  payment_method text not null default 'demo_upi',
+  payment_reference text,
+  source text not null default 'menu_demo',
   dna_signals text[] not null default '{}',
   rating text check (rating is null or rating in ('loved', 'good', 'okay', 'not_for_me')),
   created_at timestamptz not null default now()
@@ -58,6 +63,7 @@ create table if not exists public.drink_ratings (
 
 create index if not exists cafe_menu_items_cafe_idx on public.cafe_menu_items (cafe_id);
 create index if not exists coffee_orders_user_created_idx on public.coffee_orders (user_id, created_at desc);
+create index if not exists coffee_orders_invoice_number_idx on public.coffee_orders (invoice_number);
 create index if not exists drink_ratings_user_created_idx on public.drink_ratings (user_id, created_at desc);
 
 drop trigger if exists cafes_updated_at on public.cafes;

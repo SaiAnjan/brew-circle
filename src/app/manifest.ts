@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "BrewCircle",
     short_name: "BrewCircle",
-    description: "Scan café QR codes, log drinks, rate coffee, and build your Coffee DNA.",
+    description: "Enter café bill numbers, pay demo invoices, rate drinks, and build your Coffee DNA.",
     start_url: "/",
     display: "standalone",
     background_color: "#f2f2f2",

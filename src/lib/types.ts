@@ -152,3 +152,29 @@ export interface CafeMenuItem {
   dnaSignals: string[];
   offer?: string;
 }
+
+export interface CafeBillItem {
+  id: string;
+  menuItemId?: string;
+  name: string;
+  quantity: number;
+  unitPricePaise: number;
+  flavorNotes: FlavorNote[];
+  attributes: string[];
+  dnaSignals: string[];
+}
+
+export interface CafeBill {
+  invoiceNumber: string;
+  cafeId: string;
+  posProvider: string;
+  tableLabel: string;
+  serverName: string;
+  issuedAtLabel: string;
+  subtotalPaise: number;
+  discountPaise: number;
+  serviceChargePaise: number;
+  taxPaise: number;
+  totalPaise: number;
+  items: CafeBillItem[];
+}
