@@ -134,7 +134,8 @@ export function BillPaymentClient({
 
       if (!user) {
         showToast({ title: "Sign in required", description: "Sign in before paying so this bill can update your Coffee DNA.", variant: "warning" });
-        router.push(`/login?next=${encodeURIComponent("/bill")}`);
+        const returnTo = `/bill?bill=${encodeURIComponent(activeBill.invoiceNumber)}${initialCafeId ? `&cafe=${encodeURIComponent(initialCafeId)}` : ""}`;
+        router.push(`/login?next=${encodeURIComponent(returnTo)}`);
         return;
       }
 
